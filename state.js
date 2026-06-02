@@ -8,6 +8,7 @@ const store = {
     systemVolume: 50,
     thresholdsLeft: [],
     thresholdsRight: [],
+    intervalHistory: [],
     status: "",
     info: "",
   },
@@ -17,8 +18,12 @@ const store = {
     return this._state;
   },
 
-  setState(partial) {
+  setState(partial, event) {
+    const prev = { ...this._state };
     Object.assign(this._state, partial);
+    for (const key of Object.keys(partial)) {
+      console.log(`[store] ${event || key}  ${prev[key]} → ${this._state[key]}`);
+    }
     this._listeners.forEach(fn => fn(this._state));
   },
 

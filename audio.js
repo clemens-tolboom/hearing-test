@@ -98,7 +98,7 @@ function finishCalibration() {
 }
 
 function startTest() {
-    store.setState({ mode: "test" });
+    store.setState({ mode: "test", intervalHistory: [] });
     initIntervals();
     currentInterval = nextInterval();
     testInterval(currentInterval);
@@ -126,7 +126,18 @@ function markThreshold() {
     thresholdsLeft.sort((a, b) => a.freq - b.freq);
     thresholdsRight.sort((a, b) => a.freq - b.freq);
 
-    store.setState({ thresholdsLeft, thresholdsRight });
+    const histEntry = {
+        interval: currentInterval,
+        ear: state.ear,
+        thresholdsKey: state.ear === "left" ? "thresholdsLeft" : "thresholdsRight",
+        prevQueue: [...intervals],
+    };
+
+    store.setState({
+        thresholdsLeft,
+        thresholdsRight,
+        intervalHistory: [...state.intervalHistory, histEntry],
+    });
 
     intervals.push(...splitInterval(currentInterval));
 
@@ -137,6 +148,53 @@ function markThreshold() {
         return;
     }
     testInterval(currentInterval);
+}
+
+function skipInterval() {
+    const state = store.getState();
+    const histEntry = {
+        interval: currentInterval,
+        ear: state.ear,
+        thresholdsKey: null,
+        prevQueue: [...intervals],
+    };
+    store.setState({ intervalHistory: [...state.intervalHistory, histEntry] });
+
+    intervals.push(...splitInterval(currentInterval));
+
+    currentInterval = nextInterval();
+    if (!currentInterval) {
+        stopOsc();
+        store.setState({ status: "Alle intervallen getest. Start nu de sweep." });
+        return;
+    }
+    testInterval(currentInterval);
+}
+
+function prevInterval() {
+    const state = store.getState();
+    const history = state.intervalHistory;
+    if (history.length === 0) return;
+    const last = history[history.length - 1];
+
+    intervals = [last.interval, ...last.prevQueue];
+    currentInterval = last.interval;
+
+    const mid = (currentInterval.left + currentInterval.right) / 2;
+    const f = logFreqFromX(mid);
+
+    stopOsc();
+
+    const patch = { intervalHistory: history.slice(0, -1), currentX: mid, ear: last.ear };
+    if (last.thresholdsKey) {
+        const arr = [...state[last.thresholdsKey]];
+        arr.pop();
+        patch[last.thresholdsKey] = arr;
+    }
+    store.setState(patch);
+
+    startOsc(f, store.getState().calibrationGain * 0.5);
+    store.setState({ info: `Test freq ≈ ${f.toFixed(0)} Hz (${patch.ear})` });
 }
 
 /* ---------------------------------------------------------

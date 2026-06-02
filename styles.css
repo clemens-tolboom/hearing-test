@@ -32,6 +32,26 @@ button:disabled {
     margin-bottom: 1rem;
 }
 
+.row {
+    display: flex;
+    gap: 1rem;
+}
+
+.col {
+    flex: 1;
+    min-width: 0;
+}
+
+.keys {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.keys li {
+    margin-bottom: 0.4rem;
+}
+
 canvas {
     background: #000;
     border-radius: 4px;

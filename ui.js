@@ -20,7 +20,7 @@ function drawChart(state) {
     const dBMax = 20;
 
     function dBtoY(dB) {
-        const y = chartTop + ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
+        const y = chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
         return Math.max(chartTop, Math.min(chartBottom, y));
     }
 
@@ -37,7 +37,7 @@ function drawChart(state) {
     ctx2d.fillStyle = "#777";
     ctx2d.font = "11px system-ui";
     [-60, -40, -20, 0].forEach(dB => {
-        const y = chartTop + ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
+        const y = chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
         ctx2d.beginPath();
         ctx2d.moveTo(40, y);
         ctx2d.lineTo(w - 10, y);
@@ -148,6 +148,8 @@ window.addEventListener("keydown", e => {
     if (state.mode === "test") {
         if (e.key === "ArrowUp") setGain(state.currentGain * 1.1);
         if (e.key === "ArrowDown") setGain(state.currentGain / 1.1);
+        if (e.key === "n" || e.key === "N") { skipInterval(); return; }
+        if (e.key === "p" || e.key === "P") { prevInterval(); return; }
         if (e.key === " ") {
             markThreshold();
             document.getElementById("btnSweep").disabled = false;

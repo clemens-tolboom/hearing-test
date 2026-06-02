@@ -12,24 +12,38 @@
 
     <h1>Hoor Test – Interval Queue</h1>
 
-    <div class="panel">
-        <h2>Stappen</h2>
-        <p>
-            1. Audio initialiseren<br>
-            2. Systeemvolume invoeren<br>
-            3. Kalibratie (1 kHz, ↑/↓, spatie)<br>
-            4. Testfase (interval‑queue)<br>
-            5. Sweep<br>
-            6. Download resultaten
-        </p>
+    <div class="panel row">
+        <div class="col">
+            <h2>Stappen</h2>
+            <p>
+                1. Audio initialiseren<br>
+                2. Systeemvolume invoeren<br>
+                3. Kalibratie<br>
+                4. Testfase (interval‑queue)<br>
+                5. Sweep<br>
+                6. Download resultaten
+            </p>
+        </div>
+        <div class="col">
+            <h2>Toetsen</h2>
+            <ul class="keys">
+                <li><span class="kbd">E</span> oor wisselen</li>
+                <li><span class="kbd">↑</span> <span class="kbd">↓</span> volume</li>
+                <li><span class="kbd">Spatie</span> bevestigen</li>
+                <li><span class="kbd">N</span> volgende (skip)</li>
+                <li><span class="kbd">P</span> herstel</li>
+            </ul>
+        </div>
+    </div>
 
+    <div class="panel">
+        <h2>Knoppen</h2>
         <button id="btnInit">Audio initialiseren</button>
         <input type="number" id="inputVolume" value="50" min="0" max="100">
         <button id="btnCalibrate" disabled>Kalibratie</button>
         <button id="btnTest" disabled>Testfase</button>
         <button id="btnSweep" disabled>Sweep</button>
         <button id="btnDownload" disabled>Download resultaten</button>
-
         <div id="status" class="status"></div>
     </div>
 
