@@ -13,29 +13,61 @@ function drawChart(state) {
     const w = canvas.width;
     const h = canvas.height;
 
+    const chartTop = 10;
+    const chartBottom = h - 20;
+    const chartHeight = chartBottom - chartTop;
+    const dBMin = -60;
+    const dBMax = 20;
+
+    function dBtoY(dB) {
+        const y = chartTop + ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
+        return Math.max(chartTop, Math.min(chartBottom, y));
+    }
+
+    function gainToDB(gain) {
+        return 20 * Math.log10(gain / state.calibrationGain + 1e-10);
+    }
+
     ctx2d.clearRect(0, 0, w, h);
     ctx2d.fillStyle = "#000";
     ctx2d.fillRect(0, 0, w, h);
 
+    // y-axis gridlines
+    ctx2d.strokeStyle = "#333";
+    ctx2d.fillStyle = "#777";
+    ctx2d.font = "11px system-ui";
+    [-60, -40, -20, 0].forEach(dB => {
+        const y = chartTop + ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
+        ctx2d.beginPath();
+        ctx2d.moveTo(40, y);
+        ctx2d.lineTo(w - 10, y);
+        ctx2d.stroke();
+        ctx2d.fillText(dB + " dB", 3, y + 4);
+    });
+
+    // axes
     ctx2d.strokeStyle = "#444";
     ctx2d.beginPath();
-    ctx2d.moveTo(40, 10);
-    ctx2d.lineTo(40, h - 20);
-    ctx2d.lineTo(w - 10, h - 20);
+    ctx2d.moveTo(40, chartTop);
+    ctx2d.lineTo(40, chartBottom);
+    ctx2d.lineTo(w - 10, chartBottom);
     ctx2d.stroke();
 
+    // x-axis freq grid
     ctx2d.fillStyle = "#555";
+    ctx2d.font = "12px system-ui";
     [250, 500, 1000, 2000, 4000, 8000].forEach(f => {
         const x = 40 + xFromFreq(f) * (w - 60);
-        ctx2d.fillRect(x, h - 20, 1, 5);
-        ctx2d.fillText(f.toString(), x - 10, h - 25);
+        ctx2d.fillRect(x, chartBottom, 1, 5);
+        ctx2d.fillText(f.toString(), x - 10, chartBottom + 14);
     });
 
     function drawList(list, color) {
         ctx2d.fillStyle = color;
         list.forEach(t => {
             const x = 40 + t.x * (w - 60);
-            const y = (h - 20) - Math.log10(t.gain / state.calibrationGain + 1e-7) * 40;
+            const dB = gainToDB(t.gain);
+            const y = dBtoY(dB);
             ctx2d.beginPath();
             ctx2d.arc(x, y, 3, 0, Math.PI * 2);
             ctx2d.fill();
@@ -45,8 +77,10 @@ function drawChart(state) {
     drawList(state.thresholdsLeft, "#2a5");
     drawList(state.thresholdsRight, "#fa3");
 
+    // current point
     const xCur = 40 + state.currentX * (w - 60);
-    const yCur = (h - 20) - Math.log10(state.currentGain / state.calibrationGain + 1e-7) * 40;
+    const dB = gainToDB(state.currentGain);
+    const yCur = dBtoY(dB);
     ctx2d.fillStyle = "#58a";
     ctx2d.beginPath();
     ctx2d.arc(xCur, yCur, 4, 0, Math.PI * 2);
