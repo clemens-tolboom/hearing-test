@@ -92,8 +92,8 @@ function startCalibration() {
 }
 
 function finishCalibration() {
-    const currentGain = store.getState().currentGain;
-    store.setState({ calibrationGain: currentGain, mode: "idle", status: "Kalibratie klaar. Start nu de testfase." });
+    const state = store.getState();
+    store.setState({ calibrationGain: state.currentGain, calibrationEar: state.ear, mode: "idle", status: "Kalibratie klaar. Start nu de testfase." });
     stopOsc();
 }
 
@@ -248,8 +248,16 @@ function downloadResults() {
         timestamp: new Date().toISOString(),
         os: navigator.userAgent,
         systemVolume: state.systemVolume,
-        leftEar: state.thresholdsLeft,
-        rightEar: state.thresholdsRight
+        ears: {
+            left: {
+                calibration: state.calibrationEar === "left" ? { frequency: state.calibrationFreq, gain: state.calibrationGain } : null,
+                thresholds: state.thresholdsLeft,
+            },
+            right: {
+                calibration: state.calibrationEar === "right" ? { frequency: state.calibrationFreq, gain: state.calibrationGain } : null,
+                thresholds: state.thresholdsRight,
+            },
+        },
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });

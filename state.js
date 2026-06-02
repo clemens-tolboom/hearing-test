@@ -3,6 +3,8 @@ const store = {
     mode: "idle",
     ear: "left",
     calibrationGain: 0.001,
+    calibrationEar: null,
+    calibrationFreq: 1000,
     currentGain: 0.0001,
     currentX: 0.5,
     systemVolume: 50,
