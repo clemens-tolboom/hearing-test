@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Hoor test SPA</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            padding: 1rem 2rem;
+            background: #111;
+            color: #eee;
+        }
+
+        h1,
+        h2 {
+            margin: 0.5rem 0;
+        }
+
+        .row {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .panel {
+            flex: 1;
+            border: 1px solid #444;
+            padding: 1rem;
+            border-radius: 8px;
+            background: #181818;
+        }
+
+        button {
+            padding: 0.4rem 0.8rem;
+            margin: 0.2rem;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background: #222;
+            color: #eee;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .status {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-top: 0.5rem;
+            white-space: pre-line;
+        }
+
+        canvas {
+            background: #000;
+            border-radius: 4px;
+        }
+
+        .kbd {
+            display: inline-block;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            border: 1px solid #666;
+            font-size: 0.8rem;
+            background: #222;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 0.1rem 0.4rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            background: #333;
+            margin-left: 0.3rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Hoor test (binaire SPA)</h1>
+    <p>
+        Stappen:
+        <br>1. Kalibratie (1 kHz, stel comfortabel volume in met <span class="kbd">↑</span>/<span class="kbd">↓</span>,
+        bevestig met <span class="kbd">spatie</span>)
+        <br>2. Testfase: frequenties en volumes met pijltjestoetsen
+        <br>3. Sweep: controle boven/onder kantelpunt
+    </p>
+
+    <div class="row">
+        <div class="panel">
+            <h2>Besturing</h2>
+            <p>
+                <b>Kalibratie:</b><br>
+                - <span class="kbd">↑</span>/<span class="kbd">↓</span> volume<br>
+                - <span class="kbd">spatie</span> bevestig kalibratie
+            </p>
+            <p>
+                <b>Testfase:</b><br>
+                - <span class="kbd">↑</span>/<span class="kbd">↓</span> volume<br>
+                - <span class="kbd">←</span>/<span class="kbd">→</span> kies interval (lager/hoger freq)<br>
+                - <span class="kbd">spatie</span> markeer kantelpunt voor huidige frequentie
+            </p>
+            <p>
+                <b>Algemeen:</b><br>
+                - <span class="kbd">E</span> wissel oor (links/rechts)<br>
+                - <span class="kbd">T</span> start testfase<br>
+                - <span class="kbd">S</span> start sweep na test
+            </p>
+
+            <button id="btnInit">Audio initialiseren</button>
+            <button id="btnCalibrate" disabled>Kalibratie starten</button>
+            <button id="btnTest" disabled>Testfase starten</button>
+            <button id="btnSweep" disabled>Sweep starten</button>
+
+            <div class="status" id="status"></div>
+        </div>
+
+        <div class="panel">
+            <h2>Grafiek</h2>
+            <p>
+                x = log-frequentie, y = volume<br>
+                <span class="tag" style="background:#2a5;">groen</span> kantelpunten<br>
+                <span class="tag" style="background:#58a;">blauw</span> huidig punt
+            </p>
+            <canvas id="chart" width="600" height="300"></canvas>
+            <div class="status" id="info"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Audio & model ---
+        let audioCtx = null;
+        let osc = null;
+        let gainNode = null;
+        let panner = null;
+
+        const fMin = 200;   // Hz
+        const fMax = 8000;  // Hz
+
+        let calibrationGain = 0.001;
+        let currentGain = 0.0001;
+        let currentX = 0.5; // genormaliseerde log-freq [0,1]
+        let left = 0.0;
+        let right = 1.0;
+
+        let ear = "left"; // "left" | "right"
+        let mode = "idle"; // "idle" | "calibrate" | "test" | "sweep"
+
+        // thresholds: array van { x, freq, gain }
+        const thresholds = [];
+
+        const statusEl = document.getElementById("status");
+        const infoEl = document.getElementById("info");
+        const btnInit = document.getElementById("btnInit");
+        const btnCalibrate = document.getElementById("btnCalibrate");
+        const btnTest = document.getElementById("btnTest");
+        const btnSweep = document.getElementById("btnSweep");
+        const canvas = document.getElementById("chart");
+        const ctx2d = canvas.getContext("2d");
+
+        function logFreqFromX(x) {
+            return fMin * Math.pow(fMax / fMin, x);
+        }
+
+        function xFromFreq(freq) {
+            return Math.log(freq / fMin) / Math.log(fMax / fMin);
+        }
+
+        function setStatus(msg) {
+            statusEl.textContent = msg;
+        }
+
+        function setInfo(msg) {
+            infoEl.textContent = msg;
+        }
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            osc = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+            panner = new StereoPannerNode(audioCtx, { pan: ear === "left" ? -1 : 1 });
+
+            osc.type = "sine";
+            osc.frequency.value = 1000;
+            gainNode.gain.value = 0.0001;
+
+            osc.connect(panner).connect(gainNode).connect(audioCtx.destination);
+            osc.start();
+        }
+
+        function stopOsc() {
+            if (osc) {
+                try { osc.stop(); } catch (e) { }
+                osc.disconnect();
+                osc = null;
+            }
+        }
+
+        function updatePanner() {
+            if (panner) {
+                panner.pan.value = ear === "left" ? -1 : 1;
+            }
+        }
+
+        function setFreqFromX(x) {
+            currentX = Math.min(1, Math.max(0, x));
+            const f = logFreqFromX(currentX);
+            if (osc) osc.frequency.value = f;
+            return f;
+        }
+
+        function setGain(g) {
+            currentGain = Math.max(0.0000001, g);
+            if (gainNode) gainNode.gain.value = currentGain;
+        }
+
+        function drawChart() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx2d.clearRect(0, 0, w, h);
+
+            // achtergrond
+            ctx2d.fillStyle = "#000";
+            ctx2d.fillRect(0, 0, w, h);
+
+            // assen
+            ctx2d.strokeStyle = "#444";
+            ctx2d.lineWidth = 1;
+            ctx2d.beginPath();
+            ctx2d.moveTo(40, 10);
+            ctx2d.lineTo(40, h - 20);
+            ctx2d.lineTo(w - 10, h - 20);
+            ctx2d.stroke();
+
+            // labels
+            ctx2d.fillStyle = "#aaa";
+            ctx2d.font = "10px system-ui";
+            ctx2d.fillText("volume", 5, 15);
+            ctx2d.fillText("freq (log)", w - 70, h - 8);
+
+            // grid freq
+            ctx2d.fillStyle = "#555";
+            const freqs = [250, 500, 1000, 2000, 4000, 8000];
+            freqs.forEach(f => {
+                const x = 40 + xFromFreq(f) * (w - 60);
+                ctx2d.fillRect(x, h - 20, 1, 5);
+                ctx2d.fillText(f.toString(), x - 10, h - 25);
+            });
+
+            // thresholds (groen)
+            if (thresholds.length > 0) {
+                ctx2d.fillStyle = "#2a5";
+                thresholds.forEach(t => {
+                    const x = 40 + t.x * (w - 60);
+                    const y = (h - 20) - Math.log10(t.gain / calibrationGain + 1e-7) * 40;
+                    ctx2d.beginPath();
+                    ctx2d.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx2d.fill();
+                });
+            }
+
+            // huidig punt (blauw)
+            const xCur = 40 + currentX * (w - 60);
+            const yCur = (h - 20) - Math.log10(currentGain / calibrationGain + 1e-7) * 40;
+            ctx2d.fillStyle = "#58a";
+            ctx2d.beginPath();
+            ctx2d.arc(xCur, yCur, 4, 0, Math.PI * 2);
+            ctx2d.fill();
+        }
+
+        function startCalibration() {
+            mode = "calibrate";
+            setStatus("Kalibratie: stel volume in met ↑/↓, bevestig met spatie.");
+            stopOsc();
+            initAudio();
+            setFreqFromX(xFromFreq(1000)); // 1 kHz
+            setGain(0.0001);
+            drawChart();
+        }
+
+        function finishCalibration() {
+            calibrationGain = currentGain;
+            mode = "idle";
+            stopOsc();
+            setStatus("Kalibratie klaar. Druk op 'Testfase starten' of toets T.");
+            btnTest.disabled = false;
+            drawChart();
+        }
+
+        function startTest() {
+            mode = "test";
+            stopOsc();
+            initAudio();
+            left = 0.0;
+            right = 1.0;
+            currentX = 0.5;
+            const f = setFreqFromX(currentX);
+            setGain(calibrationGain * 0.5);
+            setStatus("Testfase: gebruik ↑/↓ voor volume, ←/→ voor lager/hoger freq, spatie = kantelpunt.");
+            setInfo(`Freq ≈ ${f.toFixed(0)} Hz, oor: ${ear}, gain: ${currentGain.toExponential(2)}`);
+            drawChart();
+        }
+
+        function markThreshold() {
+            const f = logFreqFromX(currentX);
+            thresholds.push({ x: currentX, freq: f, gain: currentGain });
+            thresholds.sort((a, b) => a.freq - b.freq);
+            setStatus(`Kantelpunt opgeslagen bij ~${f.toFixed(0)} Hz (gain=${currentGain.toExponential(2)}). Ga verder met ←/→ of andere freq.`);
+            drawChart();
+        }
+
+        function chooseInterval(direction) {
+            if (direction === "left") {
+                right = currentX;
+            } else if (direction === "right") {
+                left = currentX;
+            }
+            currentX = (left + right) / 2;
+            const f = setFreqFromX(currentX);
+            setInfo(`Freq ≈ ${f.toFixed(0)} Hz, oor: ${ear}, gain: ${currentGain.toExponential(2)}`);
+            drawChart();
+        }
+
+        async function playOnce(freq, gain, durationMs) {
+            return new Promise(resolve => {
+                const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                audioCtx = ctx;
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                const p = new StereoPannerNode(ctx, { pan: ear === "left" ? -1 : 1 });
+
+                o.type = "sine";
+                o.frequency.value = freq;
+                g.gain.value = gain;
+
+                o.connect(p).connect(g).connect(ctx.destination);
+                o.start();
+
+                setTimeout(() => {
+                    o.stop();
+                    o.disconnect();
+                    resolve();
+                }, durationMs);
+            });
+        }
+
+        async function startSweep() {
+            if (thresholds.length === 0) {
+                setStatus("Geen kantelpunten gevonden. Doe eerst de testfase.");
+                return;
+            }
+            mode = "sweep";
+            setStatus("Sweep gestart: boven/onder kantelpunt. Wacht tot klaar...");
+            stopOsc();
+
+            for (const t of thresholds) {
+                const f = t.freq;
+                const gLow = t.gain * 0.8;
+                const gHigh = t.gain * 1.2;
+                setInfo(`Sweep: ${f.toFixed(0)} Hz (onder drempel)`);
+                await playOnce(f, gLow, 250);
+                await new Promise(r => setTimeout(r, 150));
+                setInfo(`Sweep: ${f.toFixed(0)} Hz (boven drempel)`);
+                await playOnce(f, gHigh, 250);
+                await new Promise(r => setTimeout(r, 250));
+            }
+
+            mode = "idle";
+            setStatus("Sweep klaar. Je kunt de resultaten bekijken of opnieuw testen.");
+            drawChart();
+        }
+
+        function toggleEar() {
+            ear = ear === "left" ? "right" : "left";
+            updatePanner();
+            const f = logFreqFromX(currentX);
+            setInfo(`Freq ≈ ${f.toFixed(0)} Hz, oor: ${ear}, gain: ${currentGain.toExponential(2)}`);
+            drawChart();
+        }
+
+        // --- Event handlers ---
+        btnInit.addEventListener("click", () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            setStatus("Audio geinitialiseerd. Start kalibratie.");
+            btnCalibrate.disabled = false;
+            btnInit.disabled = true;
+        });
+
+        btnCalibrate.addEventListener("click", () => {
+            startCalibration();
+        });
+
+        btnTest.addEventListener("click", () => {
+            startTest();
+        });
+
+        btnSweep.addEventListener("click", () => {
+            startSweep();
+        });
+
+        window.addEventListener("keydown", e => {
+            if (e.repeat) return;
+
+            if (e.key === "e" || e.key === "E") {
+                toggleEar();
+                return;
+            }
+
+            if (e.key === "t" || e.key === "T") {
+                if (audioCtx && calibrationGain > 0) {
+                    startTest();
+                }
+                return;
+            }
+
+            if (e.key === "s" || e.key === "S") {
+                if (audioCtx) {
+                    startSweep();
+                }
+                return;
+            }
+
+            if (!audioCtx) return;
+
+            if (mode === "calibrate") {
+                if (e.key === "ArrowUp") {
+                    setGain(currentGain * 1.1);
+                } else if (e.key === "ArrowDown") {
+                    setGain(currentGain / 1.1);
+                } else if (e.key === " ") {
+                    finishCalibration();
+                    btnSweep.disabled = false;
+                }
+                drawChart();
+            } else if (mode === "test") {
+                if (e.key === "ArrowUp") {
+                    setGain(currentGain * 1.1);
+                } else if (e.key === "ArrowDown") {
+                    setGain(currentGain / 1.1);
+                } else if (e.key === "ArrowLeft") {
+                    chooseInterval("left");
+                } else if (e.key === "ArrowRight") {
+                    chooseInterval("right");
+                } else if (e.key === " ") {
+                    markThreshold();
+                }
+                const f = logFreqFromX(currentX);
+                setInfo(`Freq ≈ ${f.toFixed(0)} Hz, oor: ${ear}, gain: ${currentGain.toExponential(2)}`);
+            }
+
+            drawChart();
+        });
+
+        // initial draw
+        drawChart();
+        setStatus("Klik op 'Audio initialiseren' om te beginnen.");
+    </script>
+</body>
+
+</html>
