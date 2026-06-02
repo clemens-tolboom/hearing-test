@@ -12,6 +12,12 @@ const fMax = 8000;
 let intervals = [];
 let currentInterval = null;
 
+const parentMap = new Map();
+
+function intervalKey(intv) {
+    return `${intv.left},${intv.right}`;
+}
+
 function logFreqFromX(x) {
     return fMin * Math.pow(fMax / fMin, x);
 }
@@ -63,6 +69,69 @@ function setGain(g) {
 }
 
 /* ---------------------------------------------------------
+   NAVIGATION
+--------------------------------------------------------- */
+function computeTreeStatus(intv) {
+    let depth = 0;
+    let key = intervalKey(intv);
+    while (parentMap.has(key)) {
+        depth++;
+        key = intervalKey(parentMap.get(key));
+    }
+    const total = Math.pow(2, depth);
+    const index = Math.round(intv.left * total);
+    return { depth, index, total };
+}
+
+function treeLabel(intv) {
+    const t = computeTreeStatus(intv);
+    return `d:${t.depth} i:${t.index}/${t.total}`;
+}
+
+function navigateTo(intv) {
+    currentInterval = intv;
+    const mid = (intv.left + intv.right) / 2;
+    const f = logFreqFromX(mid);
+    stopOsc();
+    const state = store.getState();
+    startOsc(f, state.calibrationGain * 0.5);
+    store.setState({ currentX: mid, info: `Test freq ≈ ${f.toFixed(0)} Hz (${state.ear})  [${treeLabel(intv)}]` });
+}
+
+function goUp() {
+    const key = intervalKey(currentInterval);
+    const parent = parentMap.get(key);
+    if (parent) navigateTo(parent);
+}
+
+function goDown() {
+    const mid = (currentInterval.left + currentInterval.right) / 2;
+    const c1 = { left: currentInterval.left, right: mid };
+    const c2 = { left: mid, right: currentInterval.right };
+    parentMap.set(intervalKey(c1), currentInterval);
+    parentMap.set(intervalKey(c2), currentInterval);
+    navigateTo(c1);
+}
+
+function goLeft() {
+    const key = intervalKey(currentInterval);
+    const parent = parentMap.get(key);
+    if (!parent) return;
+    const mid = (parent.left + parent.right) / 2;
+    const isLeft = currentInterval.left === parent.left;
+    if (!isLeft) navigateTo({ left: parent.left, right: mid });
+}
+
+function goRight() {
+    const key = intervalKey(currentInterval);
+    const parent = parentMap.get(key);
+    if (!parent) return;
+    const mid = (parent.left + parent.right) / 2;
+    const isLeft = currentInterval.left === parent.left;
+    if (isLeft) navigateTo({ left: mid, right: parent.right });
+}
+
+/* ---------------------------------------------------------
    INTERVAL QUEUE
 --------------------------------------------------------- */
 function initIntervals() {
@@ -72,14 +141,6 @@ function initIntervals() {
 function nextInterval() {
     if (intervals.length === 0) return null;
     return intervals.shift();
-}
-
-function splitInterval(intv) {
-    const mid = (intv.left + intv.right) / 2;
-    return [
-        { left: intv.left, right: mid },
-        { left: mid, right: intv.right }
-    ];
 }
 
 /* ---------------------------------------------------------
@@ -98,7 +159,8 @@ function finishCalibration() {
 }
 
 function startTest() {
-    store.setState({ mode: "test", intervalHistory: [] });
+    store.setState({ mode: "test" });
+    parentMap.clear();
     initIntervals();
     currentInterval = nextInterval();
     testInterval(currentInterval);
@@ -109,7 +171,7 @@ function testInterval(intv) {
     const state = store.getState();
     const f = logFreqFromX(mid);
     startOsc(f, state.calibrationGain * 0.5);
-    store.setState({ currentX: mid, info: `Test freq ≈ ${f.toFixed(0)} Hz (${state.ear})` });
+    store.setState({ currentX: mid, info: `Test freq ≈ ${f.toFixed(0)} Hz (${state.ear})  [${treeLabel(intv)}]` });
 }
 
 function markThreshold() {
@@ -126,18 +188,7 @@ function markThreshold() {
     thresholdsLeft.sort((a, b) => a.freq - b.freq);
     thresholdsRight.sort((a, b) => a.freq - b.freq);
 
-    const histEntry = {
-        interval: currentInterval,
-        ear: state.ear,
-        thresholdsKey: state.ear === "left" ? "thresholdsLeft" : "thresholdsRight",
-        prevQueue: [...intervals],
-    };
-
-    store.setState({
-        thresholdsLeft,
-        thresholdsRight,
-        intervalHistory: [...state.intervalHistory, histEntry],
-    });
+    store.setState({ thresholdsLeft, thresholdsRight });
 
     intervals.push(...splitInterval(currentInterval));
 
@@ -150,51 +201,13 @@ function markThreshold() {
     testInterval(currentInterval);
 }
 
-function skipInterval() {
-    const state = store.getState();
-    const histEntry = {
-        interval: currentInterval,
-        ear: state.ear,
-        thresholdsKey: null,
-        prevQueue: [...intervals],
-    };
-    store.setState({ intervalHistory: [...state.intervalHistory, histEntry] });
-
-    intervals.push(...splitInterval(currentInterval));
-
-    currentInterval = nextInterval();
-    if (!currentInterval) {
-        stopOsc();
-        store.setState({ status: "Alle intervallen getest. Start nu de sweep." });
-        return;
-    }
-    testInterval(currentInterval);
-}
-
-function prevInterval() {
-    const state = store.getState();
-    const history = state.intervalHistory;
-    if (history.length === 0) return;
-    const last = history[history.length - 1];
-
-    intervals = [last.interval, ...last.prevQueue];
-    currentInterval = last.interval;
-
-    const mid = (currentInterval.left + currentInterval.right) / 2;
-    const f = logFreqFromX(mid);
-
-    stopOsc();
-
-    const patch = { intervalHistory: history.slice(0, -1), currentX: mid, ear: last.ear };
-    if (last.thresholdsKey) {
-        const arr = [...state[last.thresholdsKey]];
-        arr.pop();
-        patch[last.thresholdsKey] = arr;
-    }
-    store.setState(patch);
-
-    startOsc(f, store.getState().calibrationGain * 0.5);
-    store.setState({ info: `Test freq ≈ ${f.toFixed(0)} Hz (${patch.ear})` });
+function splitInterval(intv) {
+    const mid = (intv.left + intv.right) / 2;
+    const c1 = { left: intv.left, right: mid };
+    const c2 = { left: mid, right: intv.right };
+    parentMap.set(intervalKey(c1), intv);
+    parentMap.set(intervalKey(c2), intv);
+    return [c1, c2];
 }
 
 /* ---------------------------------------------------------

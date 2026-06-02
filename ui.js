@@ -123,6 +123,17 @@ document.getElementById("btnSweep").onclick = () => startSweep();
 document.getElementById("btnDownload").onclick = () => downloadResults();
 
 /* ---------------------------------------------------------
+   MOUSE WHEEL — volume
+--------------------------------------------------------- */
+canvas.addEventListener("wheel", e => {
+    if (!audioCtx) return;
+    e.preventDefault();
+    const state = store.getState();
+    if (e.deltaY < 0) setGain(state.currentGain * 1.1);
+    else setGain(state.currentGain / 1.1);
+});
+
+/* ---------------------------------------------------------
    KEYBOARD
 --------------------------------------------------------- */
 window.addEventListener("keydown", e => {
@@ -146,10 +157,10 @@ window.addEventListener("keydown", e => {
     }
 
     if (state.mode === "test") {
-        if (e.key === "ArrowUp") setGain(state.currentGain * 1.1);
-        if (e.key === "ArrowDown") setGain(state.currentGain / 1.1);
-        if (e.key === "n" || e.key === "N") { skipInterval(); return; }
-        if (e.key === "p" || e.key === "P") { prevInterval(); return; }
+        if (e.key === "ArrowUp") goUp();
+        if (e.key === "ArrowDown") goDown();
+        if (e.key === "ArrowLeft") goLeft();
+        if (e.key === "ArrowRight") goRight();
         if (e.key === " ") {
             markThreshold();
             document.getElementById("btnSweep").disabled = false;

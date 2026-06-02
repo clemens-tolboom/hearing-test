@@ -10,7 +10,6 @@ const store = {
     systemVolume: 50,
     thresholdsLeft: [],
     thresholdsRight: [],
-    intervalHistory: [],
     status: "",
     info: "",
   },
