@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>Hoor Test SPA – Interval Queue</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -23,7 +24,7 @@
         </p>
 
         <button id="btnInit">Audio initialiseren</button>
-        <button id="btnVolume" disabled>Systeemvolume invoeren</button>
+        <input type="number" id="inputVolume" value="50" min="0" max="100">
         <button id="btnCalibrate" disabled>Kalibratie</button>
         <button id="btnTest" disabled>Testfase</button>
         <button id="btnSweep" disabled>Sweep</button>
@@ -38,6 +39,7 @@
         <div id="info" class="status"></div>
     </div>
 
+    <script src="state.js"></script>
     <script src="audio.js"></script>
     <script src="ui.js"></script>
 

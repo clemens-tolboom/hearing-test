@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------
-   AUDIO + MODEL
+   AUDIO ENGINE
 --------------------------------------------------------- */
 let audioCtx = null;
 let osc = null;
@@ -9,21 +9,8 @@ let panner = null;
 const fMin = 200;
 const fMax = 8000;
 
-let calibrationGain = 0.001;
-
-let currentGain = 0.0001;
-let currentX = 0.5;
-
-let ear = "left";
-let mode = "idle";
-
-let systemVolume = null;
-
 let intervals = [];
 let currentInterval = null;
-
-let thresholdsLeft = [];
-let thresholdsRight = [];
 
 function logFreqFromX(x) {
     return fMin * Math.pow(fMax / fMin, x);
@@ -35,13 +22,14 @@ function xFromFreq(freq) {
 
 function initAudio() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    setStatus("Audio geactiveerd. Voer nu je systeemvolume in.");
+    store.setState({ status: "Audio geactiveerd. Voer nu je systeemvolume in." });
 }
 
 function startOsc(freq, gain) {
     stopOsc();
     osc = audioCtx.createOscillator();
     gainNode = audioCtx.createGain();
+    const ear = store.getState().ear;
     panner = new StereoPannerNode(audioCtx, { pan: ear === "left" ? -1 : 1 });
 
     osc.type = "sine";
@@ -61,15 +49,17 @@ function stopOsc() {
 }
 
 function setFreqFromX(x) {
-    currentX = Math.min(1, Math.max(0, x));
+    const currentX = Math.min(1, Math.max(0, x));
     const f = logFreqFromX(currentX);
     if (osc) osc.frequency.value = f;
+    store.setState({ currentX });
     return f;
 }
 
 function setGain(g) {
-    currentGain = Math.max(0.0000001, g);
+    const currentGain = Math.max(0.0000001, g);
     if (gainNode) gainNode.gain.value = currentGain;
+    store.setState({ currentGain });
 }
 
 /* ---------------------------------------------------------
@@ -96,20 +86,19 @@ function splitInterval(intv) {
    TESTFLOW
 --------------------------------------------------------- */
 function startCalibration() {
-    mode = "calibrate";
+    store.setState({ mode: "calibrate" });
     startOsc(1000, 0.0001);
-    setStatus("Kalibratie: ↑/↓ volume, spatie = bevestigen.");
+    store.setState({ status: "Kalibratie: ↑/↓ volume, spatie = bevestigen." });
 }
 
 function finishCalibration() {
-    calibrationGain = currentGain;
+    const currentGain = store.getState().currentGain;
+    store.setState({ calibrationGain: currentGain, mode: "idle", status: "Kalibratie klaar. Start nu de testfase." });
     stopOsc();
-    mode = "idle";
-    setStatus("Kalibratie klaar. Start nu de testfase.");
 }
 
 function startTest() {
-    mode = "test";
+    store.setState({ mode: "test" });
     initIntervals();
     currentInterval = nextInterval();
     testInterval(currentInterval);
@@ -117,29 +106,34 @@ function startTest() {
 
 function testInterval(intv) {
     const mid = (intv.left + intv.right) / 2;
-    currentX = mid;
+    const state = store.getState();
     const f = logFreqFromX(mid);
-    startOsc(f, calibrationGain * 0.5);
-    setInfo(`Test freq ≈ ${f.toFixed(0)} Hz (${ear})`);
-    drawChart();
+    startOsc(f, state.calibrationGain * 0.5);
+    store.setState({ currentX: mid, info: `Test freq ≈ ${f.toFixed(0)} Hz (${state.ear})` });
 }
 
 function markThreshold() {
-    const f = logFreqFromX(currentX);
-    const point = { x: currentX, freq: f, gain: currentGain };
+    const state = store.getState();
+    const f = logFreqFromX(state.currentX);
+    const point = { x: state.currentX, freq: f, gain: state.currentGain };
 
-    if (ear === "left") thresholdsLeft.push(point);
+    const thresholdsLeft = [...state.thresholdsLeft];
+    const thresholdsRight = [...state.thresholdsRight];
+
+    if (state.ear === "left") thresholdsLeft.push(point);
     else thresholdsRight.push(point);
 
     thresholdsLeft.sort((a, b) => a.freq - b.freq);
     thresholdsRight.sort((a, b) => a.freq - b.freq);
+
+    store.setState({ thresholdsLeft, thresholdsRight });
 
     intervals.push(...splitInterval(currentInterval));
 
     currentInterval = nextInterval();
     if (!currentInterval) {
         stopOsc();
-        setStatus("Alle intervallen getest. Start nu de sweep.");
+        store.setState({ status: "Alle intervallen getest. Start nu de sweep." });
         return;
     }
     testInterval(currentInterval);
@@ -152,6 +146,7 @@ async function playOnce(freq, gain, ms) {
     return new Promise(resolve => {
         const o = audioCtx.createOscillator();
         const g = audioCtx.createGain();
+        const ear = store.getState().ear;
         const p = new StereoPannerNode(audioCtx, { pan: ear === "left" ? -1 : 1 });
 
         o.type = "sine";
@@ -169,32 +164,34 @@ async function playOnce(freq, gain, ms) {
 }
 
 async function startSweep() {
-    mode = "sweep";
+    store.setState({ mode: "sweep", status: "Sweep bezig..." });
     stopOsc();
-    setStatus("Sweep bezig...");
 
-    const all = [...thresholdsLeft, ...thresholdsRight].sort((a, b) => a.freq - b.freq);
+    const state = store.getState();
+    const all = [...state.thresholdsLeft, ...state.thresholdsRight].sort((a, b) => a.freq - b.freq);
 
     for (const t of all) {
-        ear = thresholdsLeft.includes(t) ? "left" : "right";
-        setInfo(`Sweep: ${t.freq.toFixed(0)} Hz (${ear})`);
+        const ear = state.thresholdsLeft.includes(t) ? "left" : "right";
+        store.setState({ ear });
+        store.setState({ info: `Sweep: ${t.freq.toFixed(0)} Hz (${ear})` });
         await playOnce(t.freq, t.gain * 0.8, 200);
         await playOnce(t.freq, t.gain * 1.2, 200);
     }
 
-    setStatus("Sweep klaar. Download nu de resultaten.");
+    store.setState({ status: "Sweep klaar. Download nu de resultaten." });
 }
 
 /* ---------------------------------------------------------
    DOWNLOAD
 --------------------------------------------------------- */
 function downloadResults() {
+    const state = store.getState();
     const data = {
         timestamp: new Date().toISOString(),
         os: navigator.userAgent,
-        systemVolume: systemVolume,
-        leftEar: thresholdsLeft,
-        rightEar: thresholdsRight
+        systemVolume: state.systemVolume,
+        leftEar: state.thresholdsLeft,
+        rightEar: state.thresholdsRight
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });

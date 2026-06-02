@@ -48,6 +48,20 @@ canvas {
     background: #222;
 }
 
+input[type="number"] {
+    padding: 0.4rem 0.8rem;
+    margin: 0.2rem;
+    border-radius: 4px;
+    border: 1px solid #555;
+    background: #222;
+    color: #eee;
+    width: 80px;
+}
+
+input[type="number"]:disabled {
+    opacity: 0.4;
+}
+
 .status {
     white-space: pre-line;
     margin-top: 0.5rem;

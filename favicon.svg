@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#111"/>
+
+  <!-- Rood -->
+  <line x1="16" y1="32" x2="16" y2="20"
+        stroke="#ff004c" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Oranje -->
+  <line x1="24" y1="32" x2="24" y2="12"
+        stroke="#ff8a00" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Geel -->
+  <line x1="32" y1="32" x2="32" y2="44"
+        stroke="#ffee00" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Groen -->
+  <line x1="40" y1="32" x2="40" y2="16"
+        stroke="#32ff00" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Blauw -->
+  <line x1="48" y1="32" x2="48" y2="28"
+        stroke="#00c8ff" stroke-width="4" stroke-linecap="round"/>
+</svg>
