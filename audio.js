@@ -218,45 +218,66 @@ function markThreshold() {
 /* ---------------------------------------------------------
    SWEEP
 --------------------------------------------------------- */
-async function playOnce(freq, gain, ms) {
-  return new Promise((resolve) => {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    const ear = store.getState().ear;
-    const p = new StereoPannerNode(audioCtx, { pan: ear === "left" ? -1 : 1 });
+let sweepStopped = false;
+let sweepRunning = false;
 
-    o.type = "sine";
-    o.frequency.value = freq;
-    g.gain.value = gain;
-
-    o.connect(p).connect(g).connect(audioCtx.destination);
-    o.start();
-
-    setTimeout(() => {
-      o.stop();
-      resolve();
-    }, ms);
-  });
+async function sweepEar(points, dur) {
+  if (sweepStopped || points.length < 2) return;
+  startOsc(points[0].freq, points[0].gain);
+  const ear = store.getState().ear;
+  store.setState({ currentX: xFromFreq(points[0].freq), currentGain: points[0].gain });
+  for (let i = 1; i < points.length; i++) {
+    if (sweepStopped) return;
+    const from = points[i - 1];
+    const to = points[i];
+    store.setState({ info: `Sweep: ${from.freq.toFixed(0)} → ${to.freq.toFixed(0)} Hz (${ear})` });
+    const now = audioCtx.currentTime;
+    osc.frequency.linearRampToValueAtTime(to.freq, now + dur / 1000);
+    gainNode.gain.linearRampToValueAtTime(to.gain, now + dur / 1000);
+    const steps = 15;
+    for (let s = 1; s <= steps; s++) {
+      if (sweepStopped) return;
+      const t = s / steps;
+      store.setState({ currentX: xFromFreq(from.freq + (to.freq - from.freq) * t), currentGain: from.gain + (to.gain - from.gain) * t });
+      await new Promise(r => setTimeout(r, dur / steps));
+    }
+  }
 }
 
 async function startSweep() {
-  store.setState({ mode: "sweep", status: "Sweep bezig..." });
+  if (sweepRunning) return;
+  sweepRunning = true;
+  sweepStopped = false;
   stopOsc();
-
+  ensureAudio();
   const state = store.getState();
-  const all = [...state.thresholdsLeft, ...state.thresholdsRight].sort(
-    (a, b) => a.freq - b.freq,
-  );
-
-  for (const t of all) {
-    const ear = state.thresholdsLeft.includes(t) ? "left" : "right";
-    store.setState({ ear });
-    store.setState({ info: `Sweep: ${t.freq.toFixed(0)} Hz (${ear})` });
-    await playOnce(t.freq, t.gain * 0.8, 200);
-    await playOnce(t.freq, t.gain * 1.2, 200);
+  const leftPts = [...state.thresholdsLeft].sort((a, b) => a.freq - b.freq);
+  const rightPts = [...state.thresholdsRight].sort((a, b) => a.freq - b.freq);
+  if (leftPts.length < 2 && rightPts.length < 2) {
+    store.setState({ status: "Niet genoeg drempels voor sweep (minimaal 2 per oor nodig)." });
+    return;
   }
+  store.setState({ mode: "sweep" });
+  document.getElementById("btnStopSweep").hidden = false;
+  while (!sweepStopped) {
+    if (leftPts.length >= 2) {
+      store.setState({ ear: "left", status: "Sweep linkeroor..." });
+      await sweepEar(leftPts, 1500);
+    }
+    if (sweepStopped) break;
+    if (rightPts.length >= 2) {
+      store.setState({ ear: "right", status: "Sweep rechteroor..." });
+      await sweepEar(rightPts, 1500);
+    }
+  }
+  stopOsc();
+  document.getElementById("btnStopSweep").hidden = true;
+  store.setState({ mode: "idle", status: sweepStopped ? "Sweep gestopt." : "Sweep klaar." });
+  sweepRunning = false;
+}
 
-  store.setState({ status: "Sweep klaar. Download nu de resultaten." });
+function stopSweep() {
+  sweepStopped = true;
 }
 
 /* ---------------------------------------------------------

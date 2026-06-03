@@ -117,6 +117,7 @@ document.getElementById("btnTest").onclick = () => {
     startTest();
 };
 document.getElementById("btnSweep").onclick = () => startSweep();
+document.getElementById("btnStopSweep").onclick = () => stopSweep();
 document.getElementById("btnDownload").onclick = () => downloadResults();
 document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange = () => {
