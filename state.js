@@ -1,35 +1,22 @@
-const store = {
-  _state: {
-    mode: "idle",
-    ear: "left",
-    calibrationGainLeft: 0.001,
-    calibrationGainRight: 0.001,
-    calibrationFreq: CALIBRATION_FREQ,
-    currentGain: 0.0001,
-    currentX: 0.5,
-    systemVolume: 50,
-    thresholdsLeft: [],
-    thresholdsRight: [],
-    status: "",
-    info: "",
-  },
-  _listeners: new Set(),
+export function createStore(initialState) {
+  const _state = { ...initialState };
+  const _listeners = new Set();
 
-  getState() {
-    return this._state;
-  },
-
-  setState(partial, event) {
-    const prev = { ...this._state };
-    Object.assign(this._state, partial);
-    for (const key of Object.keys(partial)) {
-      console.log(`[store] ${event || key}  ${prev[key]} → ${this._state[key]}`);
-    }
-    this._listeners.forEach(fn => fn(this._state));
-  },
-
-  subscribe(fn) {
-    this._listeners.add(fn);
-    return () => this._listeners.delete(fn);
-  }
-};
+  return {
+    getState() {
+      return _state;
+    },
+    setState(partial, event) {
+      const prev = { ..._state };
+      Object.assign(_state, partial);
+      for (const key of Object.keys(partial)) {
+        console.log(`[store] ${event || key}  ${prev[key]} → ${_state[key]}`);
+      }
+      _listeners.forEach(fn => fn(_state));
+    },
+    subscribe(fn) {
+      _listeners.add(fn);
+      return () => _listeners.delete(fn);
+    },
+  };
+}
