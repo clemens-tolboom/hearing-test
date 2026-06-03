@@ -118,6 +118,23 @@ document.getElementById("btnTest").onclick = () => {
 };
 document.getElementById("btnSweep").onclick = () => startSweep();
 document.getElementById("btnDownload").onclick = () => downloadResults();
+document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange = () => {
+  if (document.getElementById("fileInput").files[0]) {
+    loadResults(document.getElementById("fileInput").files[0]);
+  }
+};
+
+/* ---------------------------------------------------------
+   DRAG & DROP — upload
+--------------------------------------------------------- */
+const dropPanel = document.querySelector(".panel:nth-of-type(2)");
+dropPanel.addEventListener("dragover", e => { e.preventDefault(); });
+dropPanel.addEventListener("drop", e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith(".json")) loadResults(file);
+});
 
 /* ---------------------------------------------------------
    MOUSE WHEEL — volume

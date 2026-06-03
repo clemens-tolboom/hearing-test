@@ -25,4 +25,5 @@
 
 ## To Do
 
+- [ ] Audio sweep sould do first left ear all in smooth interpolation between freq and volume instead of ticking then right ear continuesly repeat until button clicked again.
 - [ ] Note: No known bugs. Feature requests welcome.

@@ -260,8 +260,44 @@ async function startSweep() {
 }
 
 /* ---------------------------------------------------------
-   DOWNLOAD
+   DOWNLOAD / UPLOAD
 --------------------------------------------------------- */
+function loadResults(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const left = data.ears && data.ears.left;
+      const right = data.ears && data.ears.right;
+      if (!left || !right) throw new Error("Ongeldig bestand: 'ears.left' of 'ears.right' ontbreekt.");
+      const patch = {
+        systemVolume: data.systemVolume ?? 50,
+        calibrationFreq: left.calibration?.frequency ?? 1000,
+        calibrationGainLeft: left.calibration?.gain ?? 0.001,
+        calibrationGainRight: right.calibration?.gain ?? 0.001,
+        thresholdsLeft: left.thresholds ?? [],
+        thresholdsRight: right.thresholds ?? [],
+        mode: "idle",
+        ear: "left",
+        currentGain: 0.0001,
+        currentX: 0.5,
+        info: "",
+        status: `Geladen: ${left.thresholds?.length ?? 0} linker / ${right.thresholds?.length ?? 0} rechter drempels`,
+      };
+      stopOsc();
+      store.setState(patch);
+      updateCalibrateBtn();
+      if (left.thresholds?.length || right.thresholds?.length) {
+        document.getElementById("btnSweep").disabled = false;
+        document.getElementById("btnDownload").disabled = false;
+      }
+    } catch (err) {
+      store.setState({ status: "Fout bij laden: " + err.message });
+    }
+  };
+  reader.readAsText(file);
+}
+
 function downloadResults() {
   const state = store.getState();
   const data = {
