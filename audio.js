@@ -210,6 +210,7 @@ function markThreshold() {
       stopOsc();
       store.setState({ status: "Beide oren getest. Start nu de sweep." });
       document.getElementById("btnSweep").disabled = false;
+      document.getElementById("btnSweep").className = "ready";
       document.getElementById("btnDownload").disabled = false;
     }
   }
@@ -255,10 +256,13 @@ async function startSweep() {
   const rightPts = [...state.thresholdsRight].sort((a, b) => a.freq - b.freq);
   if (leftPts.length < 2 && rightPts.length < 2) {
     store.setState({ status: "Niet genoeg drempels voor sweep (minimaal 2 per oor nodig)." });
+    sweepRunning = false;
     return;
   }
   store.setState({ mode: "sweep" });
-  document.getElementById("btnStopSweep").hidden = false;
+  const btn = document.getElementById("btnSweep");
+  btn.className = "error";
+  btn.textContent = "Stop sweep";
   while (!sweepStopped) {
     if (leftPts.length >= 2) {
       store.setState({ ear: "left", status: "Sweep linkeroor..." });
@@ -271,7 +275,8 @@ async function startSweep() {
     }
   }
   stopOsc();
-  document.getElementById("btnStopSweep").hidden = true;
+  btn.className = "ready";
+  btn.textContent = "Sweep";
   store.setState({ mode: "idle", status: sweepStopped ? "Sweep gestopt." : "Sweep klaar." });
   sweepRunning = false;
 }
@@ -310,6 +315,7 @@ function loadResults(file) {
       updateCalibrateBtn();
       if (left.thresholds?.length || right.thresholds?.length) {
         document.getElementById("btnSweep").disabled = false;
+        document.getElementById("btnSweep").className = "ready";
         document.getElementById("btnDownload").disabled = false;
       }
     } catch (err) {

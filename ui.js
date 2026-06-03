@@ -116,8 +116,10 @@ document.getElementById("btnTest").onclick = () => {
     document.getElementById("btnTest").disabled = true;
     startTest();
 };
-document.getElementById("btnSweep").onclick = () => startSweep();
-document.getElementById("btnStopSweep").onclick = () => stopSweep();
+document.getElementById("btnSweep").onclick = () => {
+  if (sweepRunning) stopSweep();
+  else startSweep();
+};
 document.getElementById("btnDownload").onclick = () => downloadResults();
 document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange = () => {
