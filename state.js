@@ -1,12 +1,10 @@
-const APP_VERSION = "0.1.0";
-
 const store = {
   _state: {
     mode: "idle",
     ear: "left",
     calibrationGainLeft: 0.001,
     calibrationGainRight: 0.001,
-    calibrationFreq: 1000,
+    calibrationFreq: CALIBRATION_FREQ,
     currentGain: 0.0001,
     currentX: 0.5,
     systemVolume: 50,

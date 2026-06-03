@@ -1,15 +1,13 @@
 /* ---------------------------------------------------------
    FREQUENCY GENERATORS
+   Constants (F_MIN, F_MAX) come from main.js
    --------------------------------------------------------- */
-const fMin = 110;
-const fMax = 4186;
-
 function logFreqFromX(x) {
-    return fMin * Math.pow(fMax / fMin, x);
+    return F_MIN * Math.pow(F_MAX / F_MIN, x);
 }
 
 function xFromFreq(freq) {
-    return Math.log(freq / fMin) / Math.log(fMax / fMin);
+    return Math.log(freq / F_MIN) / Math.log(F_MAX / F_MIN);
 }
 
 /* ---------------------------------------------------------

@@ -8,8 +8,6 @@ let panner = null;
 
 let pianoNotes = [];
 let currentNoteIndex = 0;
-let midiLower = 55;
-let midiHigher = 108;
 let gainRatioLeft = 0.5;
 let gainRatioRight = 0.5;
 
@@ -126,11 +124,11 @@ function playCurrentNote() {
   const gain = calGain(state) * ratio;
   stopOsc();
   startOsc(freq, gain);
-  const midi = currentNoteIndex + midiLower;
+  const midi = currentNoteIndex + MIDI_LOWER;
   store.setState({
     currentX: xFromFreq(freq),
     currentGain: gain,
-    info: `Test freq ≈ ${freq.toFixed(0)} Hz (${state.ear}) [MIDI ${midi}/${midiLower + pianoNotes.length - 1}]`,
+    info: `Test freq ≈ ${freq.toFixed(0)} Hz (${state.ear}) [MIDI ${midi}/${MIDI_LOWER + pianoNotes.length - 1}]`
   });
 }
 
@@ -154,7 +152,7 @@ function prevNote() {
 function startCalibration() {
   const ear = store.getState().ear;
   store.setState({ mode: "calibrate" });
-  startOsc(1000, 0.0001);
+  startOsc(CALIBRATION_FREQ, 0.0001);
   store.setState({
     status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.`,
   });
@@ -178,7 +176,7 @@ function finishCalibration() {
 }
 
 function startTest() {
-  const gen = freqGen(pianoFreqs, midiHigher, midiLower);
+  const gen = freqGen(pianoFreqs, MIDI_HIGHER, MIDI_LOWER);
   pianoNotes = [...skipN(gen, 4)];
   currentNoteIndex = 0;
   store.setState({ mode: "test" });
@@ -298,7 +296,7 @@ function loadResults(file) {
       if (!left || !right) throw new Error("Ongeldig bestand: 'ears.left' of 'ears.right' ontbreekt.");
       const patch = {
         systemVolume: data.systemVolume ?? 50,
-        calibrationFreq: left.calibration?.frequency ?? 1000,
+        calibrationFreq: left.calibration?.frequency ?? CALIBRATION_FREQ,
         calibrationGainLeft: left.calibration?.gain ?? 0.001,
         calibrationGainRight: right.calibration?.gain ?? 0.001,
         thresholdsLeft: left.thresholds ?? [],
