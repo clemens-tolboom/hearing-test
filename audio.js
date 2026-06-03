@@ -6,279 +6,294 @@ let osc = null;
 let gainNode = null;
 let panner = null;
 
-const fMin = 200;
-const fMax = 8000;
+let pianoNotes = [];
+let currentNoteIndex = 0;
+let midiLower = 55;
+let midiHigher = 108;
+let gainRatioLeft = 0.5;
+let gainRatioRight = 0.5;
 
-let intervals = [];
-let currentInterval = null;
-
-const parentMap = new Map();
-
-function intervalKey(intv) {
-    return `${intv.left},${intv.right}`;
-}
-
-function logFreqFromX(x) {
-    return fMin * Math.pow(fMax / fMin, x);
-}
-
-function xFromFreq(freq) {
-    return Math.log(freq / fMin) / Math.log(fMax / fMin);
+function ensureAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  updateAudioBtn();
 }
 
 function initAudio() {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    store.setState({ status: "Audio geactiveerd. Voer nu je systeemvolume in." });
+  ensureAudio();
+  store.setState({
+    status: "Audio geactiveerd. Systeemvolume is optioneel. Start kalibratie.",
+  });
+  document.getElementById("btnCalibrate").disabled = false;
 }
 
+function updateAudioBtn() {
+  const btn = document.getElementById("btnInit");
+  if (!btn) return;
+  if (!audioCtx || audioCtx.state === "closed") {
+    btn.className = "error";
+    btn.textContent = "Audio ✗";
+  } else if (audioCtx.state === "running") {
+    btn.className = "ready";
+    btn.textContent = "Audio ✓";
+  } else {
+    btn.className = "pending";
+    btn.textContent = "Audio ⏳";
+  }
+}
+
+function updateCalibrateBtn() {
+  const btn = document.getElementById("btnCalibrate");
+  if (!btn) return;
+  const state = store.getState();
+  const leftDone = state.calibrationGainLeft !== 0.001;
+  const rightDone = state.calibrationGainRight !== 0.001;
+  if (leftDone && rightDone) {
+    btn.className = "ready";
+    btn.textContent = "Kalibratie ✓";
+  } else if (leftDone || rightDone) {
+    btn.className = "pending";
+    btn.textContent = "Kalibratie ⏳";
+  } else {
+    btn.className = "error";
+    btn.textContent = "Kalibratie ✗";
+  }
+}
+
+initAudio();
+
 function startOsc(freq, gain) {
-    stopOsc();
-    osc = audioCtx.createOscillator();
-    gainNode = audioCtx.createGain();
-    const ear = store.getState().ear;
-    panner = new StereoPannerNode(audioCtx, { pan: ear === "left" ? -1 : 1 });
+  ensureAudio();
+  stopOsc();
+  osc = audioCtx.createOscillator();
+  gainNode = audioCtx.createGain();
+  const ear = store.getState().ear;
+  panner = new StereoPannerNode(audioCtx, { pan: ear === "left" ? -1 : 1 });
 
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    gainNode.gain.value = gain;
+  osc.type = "sine";
+  osc.frequency.value = freq;
+  gainNode.gain.value = gain;
 
-    osc.connect(panner).connect(gainNode).connect(audioCtx.destination);
-    osc.start();
+  osc.connect(panner).connect(gainNode).connect(audioCtx.destination);
+  osc.start();
 }
 
 function stopOsc() {
-    if (osc) {
-        try { osc.stop(); } catch (e) { }
-        osc.disconnect();
-        osc = null;
-    }
+  if (osc) {
+    try {
+      osc.stop();
+    } catch (e) {}
+    osc.disconnect();
+    osc = null;
+  }
 }
 
 function setFreqFromX(x) {
-    const currentX = Math.min(1, Math.max(0, x));
-    const f = logFreqFromX(currentX);
-    if (osc) osc.frequency.value = f;
-    store.setState({ currentX });
-    return f;
+  const currentX = Math.min(1, Math.max(0, x));
+  const f = logFreqFromX(currentX);
+  if (osc) osc.frequency.value = f;
+  store.setState({ currentX });
+  return f;
 }
 
 function setGain(g) {
-    const currentGain = Math.max(0.0000001, g);
-    if (gainNode) gainNode.gain.value = currentGain;
-    store.setState({ currentGain });
+  const currentGain = Math.max(0.0000001, g);
+  if (gainNode) gainNode.gain.value = currentGain;
+  store.setState({ currentGain });
+  const state = store.getState();
+  const ratio = currentGain / calGain(state);
+  if (state.ear === "left") gainRatioLeft = ratio;
+  else gainRatioRight = ratio;
 }
 
 /* ---------------------------------------------------------
-   NAVIGATION
+   PIANO NOTE NAVIGATION
 --------------------------------------------------------- */
-function computeTreeStatus(intv) {
-    let depth = 0;
-    let key = intervalKey(intv);
-    while (parentMap.has(key)) {
-        depth++;
-        key = intervalKey(parentMap.get(key));
-    }
-    const total = Math.pow(2, depth);
-    const index = Math.round(intv.left * total);
-    return { depth, index, total };
+function calGain(state) {
+  return state.ear === "left"
+    ? state.calibrationGainLeft
+    : state.calibrationGainRight;
 }
 
-function treeLabel(intv) {
-    const t = computeTreeStatus(intv);
-    return `d:${t.depth} i:${t.index}/${t.total}`;
+function playCurrentNote() {
+  const freq = pianoNotes[currentNoteIndex];
+  const state = store.getState();
+  const ratio = state.ear === "left" ? gainRatioLeft : gainRatioRight;
+  const gain = calGain(state) * ratio;
+  stopOsc();
+  startOsc(freq, gain);
+  const midi = currentNoteIndex + midiLower;
+  store.setState({
+    currentX: xFromFreq(freq),
+    currentGain: gain,
+    info: `Test freq ≈ ${freq.toFixed(0)} Hz (${state.ear}) [MIDI ${midi}/${midiLower + pianoNotes.length - 1}]`,
+  });
 }
 
-function navigateTo(intv) {
-    currentInterval = intv;
-    const mid = (intv.left + intv.right) / 2;
-    const f = logFreqFromX(mid);
-    stopOsc();
-    const state = store.getState();
-    startOsc(f, state.calibrationGain * 0.5);
-    store.setState({ currentX: mid, info: `Test freq ≈ ${f.toFixed(0)} Hz (${state.ear})  [${treeLabel(intv)}]` });
+function nextNote() {
+  if (currentNoteIndex < pianoNotes.length - 1) {
+    currentNoteIndex++;
+    playCurrentNote();
+  }
 }
 
-function goUp() {
-    const key = intervalKey(currentInterval);
-    const parent = parentMap.get(key);
-    if (parent) navigateTo(parent);
-}
-
-function goDown() {
-    const mid = (currentInterval.left + currentInterval.right) / 2;
-    const c1 = { left: currentInterval.left, right: mid };
-    const c2 = { left: mid, right: currentInterval.right };
-    parentMap.set(intervalKey(c1), currentInterval);
-    parentMap.set(intervalKey(c2), currentInterval);
-    navigateTo(c1);
-}
-
-function goLeft() {
-    const key = intervalKey(currentInterval);
-    const parent = parentMap.get(key);
-    if (!parent) return;
-    const mid = (parent.left + parent.right) / 2;
-    const isLeft = currentInterval.left === parent.left;
-    if (!isLeft) navigateTo({ left: parent.left, right: mid });
-}
-
-function goRight() {
-    const key = intervalKey(currentInterval);
-    const parent = parentMap.get(key);
-    if (!parent) return;
-    const mid = (parent.left + parent.right) / 2;
-    const isLeft = currentInterval.left === parent.left;
-    if (isLeft) navigateTo({ left: mid, right: parent.right });
-}
-
-/* ---------------------------------------------------------
-   INTERVAL QUEUE
---------------------------------------------------------- */
-function initIntervals() {
-    intervals = [{ left: 0.0, right: 1.0 }];
-}
-
-function nextInterval() {
-    if (intervals.length === 0) return null;
-    return intervals.shift();
+function prevNote() {
+  if (currentNoteIndex > 0) {
+    currentNoteIndex--;
+    playCurrentNote();
+  }
 }
 
 /* ---------------------------------------------------------
    TESTFLOW
 --------------------------------------------------------- */
 function startCalibration() {
-    store.setState({ mode: "calibrate" });
-    startOsc(1000, 0.0001);
-    store.setState({ status: "Kalibratie: ↑/↓ volume, spatie = bevestigen." });
+  const ear = store.getState().ear;
+  store.setState({ mode: "calibrate" });
+  startOsc(1000, 0.0001);
+  store.setState({
+    status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.`,
+  });
 }
 
 function finishCalibration() {
-    const state = store.getState();
-    store.setState({ calibrationGain: state.currentGain, calibrationEar: state.ear, mode: "idle", status: "Kalibratie klaar. Start nu de testfase." });
-    stopOsc();
+  const state = store.getState();
+  const key =
+    state.ear === "left" ? "calibrationGainLeft" : "calibrationGainRight";
+  store.setState({
+    [key]: state.currentGain,
+    mode: "idle",
+    status: `${state.ear === "left" ? "Linker" : "Rechter"} oor gekalibreerd. Start nu de testfase.`,
+  });
+  updateCalibrateBtn();
+  stopOsc();
+  const s = store.getState();
+  if (s.calibrationGainLeft !== 0.001 && s.calibrationGainRight !== 0.001) {
+    document.getElementById("btnTest").disabled = false;
+  }
 }
 
 function startTest() {
-    store.setState({ mode: "test" });
-    parentMap.clear();
-    initIntervals();
-    currentInterval = nextInterval();
-    testInterval(currentInterval);
-}
-
-function testInterval(intv) {
-    const mid = (intv.left + intv.right) / 2;
-    const state = store.getState();
-    const f = logFreqFromX(mid);
-    startOsc(f, state.calibrationGain * 0.5);
-    store.setState({ currentX: mid, info: `Test freq ≈ ${f.toFixed(0)} Hz (${state.ear})  [${treeLabel(intv)}]` });
+  const gen = freqGen(pianoFreqs, midiHigher, midiLower);
+  pianoNotes = [...skipN(gen, 4)];
+  currentNoteIndex = 0;
+  store.setState({ mode: "test" });
+  playCurrentNote();
 }
 
 function markThreshold() {
-    const state = store.getState();
-    const f = logFreqFromX(state.currentX);
-    const point = { x: state.currentX, freq: f, gain: state.currentGain };
+  const state = store.getState();
+  const freq = pianoNotes[currentNoteIndex];
+  const point = { x: state.currentX, freq, gain: state.currentGain };
 
-    const thresholdsLeft = [...state.thresholdsLeft];
-    const thresholdsRight = [...state.thresholdsRight];
+  if (state.ear === "left") {
+    const thresholdsLeft = [...state.thresholdsLeft, point].sort(
+      (a, b) => a.freq - b.freq,
+    );
+    store.setState({ thresholdsLeft, ear: "right" });
+    playCurrentNote();
+  } else {
+    const thresholdsRight = [...state.thresholdsRight, point].sort(
+      (a, b) => a.freq - b.freq,
+    );
+    store.setState({ thresholdsRight });
 
-    if (state.ear === "left") thresholdsLeft.push(point);
-    else thresholdsRight.push(point);
-
-    thresholdsLeft.sort((a, b) => a.freq - b.freq);
-    thresholdsRight.sort((a, b) => a.freq - b.freq);
-
-    store.setState({ thresholdsLeft, thresholdsRight });
-
-    intervals.push(...splitInterval(currentInterval));
-
-    currentInterval = nextInterval();
-    if (!currentInterval) {
-        stopOsc();
-        store.setState({ status: "Alle intervallen getest. Start nu de sweep." });
-        return;
+    if (currentNoteIndex < pianoNotes.length - 1) {
+      currentNoteIndex++;
+      store.setState({ ear: "left" });
+      playCurrentNote();
+    } else {
+      stopOsc();
+      store.setState({ status: "Beide oren getest. Start nu de sweep." });
+      document.getElementById("btnSweep").disabled = false;
+      document.getElementById("btnDownload").disabled = false;
     }
-    testInterval(currentInterval);
-}
-
-function splitInterval(intv) {
-    const mid = (intv.left + intv.right) / 2;
-    const c1 = { left: intv.left, right: mid };
-    const c2 = { left: mid, right: intv.right };
-    parentMap.set(intervalKey(c1), intv);
-    parentMap.set(intervalKey(c2), intv);
-    return [c1, c2];
+  }
 }
 
 /* ---------------------------------------------------------
    SWEEP
 --------------------------------------------------------- */
 async function playOnce(freq, gain, ms) {
-    return new Promise(resolve => {
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        const ear = store.getState().ear;
-        const p = new StereoPannerNode(audioCtx, { pan: ear === "left" ? -1 : 1 });
+  return new Promise((resolve) => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    const ear = store.getState().ear;
+    const p = new StereoPannerNode(audioCtx, { pan: ear === "left" ? -1 : 1 });
 
-        o.type = "sine";
-        o.frequency.value = freq;
-        g.gain.value = gain;
+    o.type = "sine";
+    o.frequency.value = freq;
+    g.gain.value = gain;
 
-        o.connect(p).connect(g).connect(audioCtx.destination);
-        o.start();
+    o.connect(p).connect(g).connect(audioCtx.destination);
+    o.start();
 
-        setTimeout(() => {
-            o.stop();
-            resolve();
-        }, ms);
-    });
+    setTimeout(() => {
+      o.stop();
+      resolve();
+    }, ms);
+  });
 }
 
 async function startSweep() {
-    store.setState({ mode: "sweep", status: "Sweep bezig..." });
-    stopOsc();
+  store.setState({ mode: "sweep", status: "Sweep bezig..." });
+  stopOsc();
 
-    const state = store.getState();
-    const all = [...state.thresholdsLeft, ...state.thresholdsRight].sort((a, b) => a.freq - b.freq);
+  const state = store.getState();
+  const all = [...state.thresholdsLeft, ...state.thresholdsRight].sort(
+    (a, b) => a.freq - b.freq,
+  );
 
-    for (const t of all) {
-        const ear = state.thresholdsLeft.includes(t) ? "left" : "right";
-        store.setState({ ear });
-        store.setState({ info: `Sweep: ${t.freq.toFixed(0)} Hz (${ear})` });
-        await playOnce(t.freq, t.gain * 0.8, 200);
-        await playOnce(t.freq, t.gain * 1.2, 200);
-    }
+  for (const t of all) {
+    const ear = state.thresholdsLeft.includes(t) ? "left" : "right";
+    store.setState({ ear });
+    store.setState({ info: `Sweep: ${t.freq.toFixed(0)} Hz (${ear})` });
+    await playOnce(t.freq, t.gain * 0.8, 200);
+    await playOnce(t.freq, t.gain * 1.2, 200);
+  }
 
-    store.setState({ status: "Sweep klaar. Download nu de resultaten." });
+  store.setState({ status: "Sweep klaar. Download nu de resultaten." });
 }
 
 /* ---------------------------------------------------------
    DOWNLOAD
 --------------------------------------------------------- */
 function downloadResults() {
-    const state = store.getState();
-    const data = {
-        timestamp: new Date().toISOString(),
-        os: navigator.userAgent,
-        systemVolume: state.systemVolume,
-        ears: {
-            left: {
-                calibration: state.calibrationEar === "left" ? { frequency: state.calibrationFreq, gain: state.calibrationGain } : null,
-                thresholds: state.thresholdsLeft,
-            },
-            right: {
-                calibration: state.calibrationEar === "right" ? { frequency: state.calibrationFreq, gain: state.calibrationGain } : null,
-                thresholds: state.thresholdsRight,
-            },
+  const state = store.getState();
+  const data = {
+    timestamp: new Date().toISOString(),
+    os: navigator.userAgent,
+    systemVolume: state.systemVolume,
+    ears: {
+      left: {
+        calibration: {
+          frequency: state.calibrationFreq,
+          gain: state.calibrationGainLeft,
         },
-    };
+        thresholds: state.thresholdsLeft,
+      },
+      right: {
+        calibration: {
+          frequency: state.calibrationFreq,
+          gain: state.calibrationGainRight,
+        },
+        thresholds: state.thresholdsRight,
+      },
+    },
+  };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "hoortest_" + Date.now() + ".json";
-    a.click();
-    URL.revokeObjectURL(url);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "hoortest_" + Date.now() + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
 }

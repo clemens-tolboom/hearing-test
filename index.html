@@ -3,23 +3,23 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Hoor Test SPA – Interval Queue</title>
+    <title>Hoor Test – Piano Frequencies</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
 
-    <h1>Hoor Test – Interval Queue</h1>
+    <h1>Hoor Test – Piano Frequencies <span id="version"></span></h1>
 
     <div class="panel row">
         <div class="col">
             <h2>Stappen</h2>
             <p>
-                1. Audio initialiseren<br>
-                2. Systeemvolume invoeren<br>
-                3. Kalibratie<br>
-                4. Testfase (interval‑queue)<br>
+                1. Audio (automatisch)<br>
+                2. Systeemvolume (optioneel)<br>
+                3. Kalibratie (beide oren)<br>
+                4. Testfase (piano noten)<br>
                 5. Sweep<br>
                 6. Download resultaten
             </p>
@@ -27,7 +27,7 @@
         <div class="col">
             <h2>Toetsen</h2>
             <ul class="keys">
-                <li><span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">←</span> <span class="kbd">→</span> navigatie</li>
+                <li><span class="kbd">→</span> volgende noot &nbsp; <span class="kbd">←</span> vorige noot</li>
                 <li><span class="kbd">muiswiel</span> volume</li>
                 <li><span class="kbd">Spatie</span> bevestigen</li>
                 <li><span class="kbd">E</span> oor wisselen</li>
@@ -53,6 +53,7 @@
     </div>
 
     <script src="state.js"></script>
+    <script src="freq-gens.js"></script>
     <script src="audio.js"></script>
     <script src="ui.js"></script>
 
