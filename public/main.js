@@ -1,6 +1,6 @@
-import { createStore } from "./state.js";
-import { configure as configureFreqGens, xFromFreq } from "./freq-gens.js";
-import * as Audio from "./audio.js";
+import { createStore } from "./src/state.js";
+import { configure as configureFreqGens, xFromFreq } from "./src/freq-gens.js";
+import * as Audio from "./src/audio.js";
 
 /* ---------------------------------------------------------
    APP CONSTANTS
@@ -34,7 +34,12 @@ const store = createStore({
   info: "",
 });
 
-Audio.configure({ store, midiLower: MIDI_LOWER, midiHigher: MIDI_HIGHER, calibrationFreq: CALIBRATION_FREQ });
+Audio.configure({
+  store,
+  midiLower: MIDI_LOWER,
+  midiHigher: MIDI_HIGHER,
+  calibrationFreq: CALIBRATION_FREQ,
+});
 
 /* ---------------------------------------------------------
    DOM REFERENCES
@@ -67,7 +72,13 @@ function drawChart(state) {
   const dBMax = 40;
 
   function dBtoY(dB) {
-    return Math.max(chartTop, Math.min(chartBottom, chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight));
+    return Math.max(
+      chartTop,
+      Math.min(
+        chartBottom,
+        chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight,
+      ),
+    );
   }
 
   ctx2d.clearRect(0, 0, w, h);
@@ -77,7 +88,10 @@ function drawChart(state) {
   ctx2d.strokeStyle = "#333";
   ctx2d.fillStyle = "#777";
   ctx2d.font = "11px system-ui";
-  Array.from({ length: (dBMax - dBMin) / 20 + 1 }, (_, i) => dBMin + i * 20).forEach(dB => {
+  Array.from(
+    { length: (dBMax - dBMin) / 20 + 1 },
+    (_, i) => dBMin + i * 20,
+  ).forEach((dB) => {
     const y = chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
     ctx2d.beginPath();
     ctx2d.moveTo(40, y);
@@ -95,7 +109,7 @@ function drawChart(state) {
 
   ctx2d.fillStyle = "#555";
   ctx2d.font = "12px system-ui";
-  Array.from({ length: 6 }, (_, i) => 125 * Math.pow(2, i)).forEach(f => {
+  Array.from({ length: 6 }, (_, i) => 125 * Math.pow(2, i)).forEach((f) => {
     const x = 40 + xFromFreq(f) * (w - 60);
     ctx2d.fillRect(x, chartBottom, 1, 5);
     ctx2d.fillText(f.toString(), x - 10, chartBottom + 14);
@@ -103,7 +117,7 @@ function drawChart(state) {
 
   function drawList(list, color, calGain) {
     ctx2d.fillStyle = color;
-    list.forEach(t => {
+    list.forEach((t) => {
       const x = 40 + t.x * (w - 60);
       const dB = 20 * Math.log10(t.gain / calGain + 1e-10);
       const y = dBtoY(dB);
@@ -117,7 +131,15 @@ function drawChart(state) {
   drawList(state.thresholdsRight, "#fa3", state.calibrationGainRight);
 
   const xCur = 40 + state.currentX * (w - 60);
-  const dB = 20 * Math.log10(state.currentGain / (state.ear === "left" ? state.calibrationGainLeft : state.calibrationGainRight) + 1e-10);
+  const dB =
+    20 *
+    Math.log10(
+      state.currentGain /
+        (state.ear === "left"
+          ? state.calibrationGainLeft
+          : state.calibrationGainRight) +
+        1e-10,
+    );
   const yCur = dBtoY(dB);
   ctx2d.fillStyle = "#58a";
   ctx2d.beginPath();
@@ -135,7 +157,8 @@ function renderUI(state) {
 
   const leftDone = state.calibrationGainLeft !== 0.001;
   const rightDone = state.calibrationGainRight !== 0.001;
-  const hasData = state.thresholdsLeft.length + state.thresholdsRight.length > 0;
+  const hasData =
+    state.thresholdsLeft.length + state.thresholdsRight.length > 0;
 
   if (state.audioRunning) {
     btnInit.className = "ready";
@@ -204,8 +227,8 @@ fileInput.onchange = () => {
    DRAG & DROP — upload
 --------------------------------------------------------- */
 const dropPanel = document.querySelector(".panel:nth-of-type(2)");
-dropPanel.addEventListener("dragover", e => e.preventDefault());
-dropPanel.addEventListener("drop", e => {
+dropPanel.addEventListener("dragover", (e) => e.preventDefault());
+dropPanel.addEventListener("drop", (e) => {
   e.preventDefault();
   const file = e.dataTransfer.files[0];
   if (file && file.name.endsWith(".json")) Audio.loadResults(file);
@@ -214,7 +237,7 @@ dropPanel.addEventListener("drop", e => {
 /* ---------------------------------------------------------
    MOUSE WHEEL — volume
 --------------------------------------------------------- */
-canvas.addEventListener("wheel", e => {
+canvas.addEventListener("wheel", (e) => {
   if (!Audio.isAudioRunning()) return;
   e.preventDefault();
   const state = store.getState();
@@ -225,7 +248,7 @@ canvas.addEventListener("wheel", e => {
 /* ---------------------------------------------------------
    KEYBOARD
 --------------------------------------------------------- */
-window.addEventListener("keydown", e => {
+window.addEventListener("keydown", (e) => {
   if (!Audio.isAudioRunning()) return;
   const state = store.getState();
 
@@ -236,7 +259,9 @@ window.addEventListener("keydown", e => {
     if (state.mode === "test") {
       Audio.playCurrentNote();
     } else if (state.mode === "calibrate") {
-      store.setState({ status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.` });
+      store.setState({
+        status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.`,
+      });
     }
     return;
   }
