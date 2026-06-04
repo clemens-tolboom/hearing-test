@@ -141,6 +141,8 @@ export function finishCalibration() {
 
 export function startTest() {
   const state = _store.getState();
+  _store.setState({ ear: "left" });
+  setPan("left");
   const gen = freqGen(pianoFreqs, state.midiUpper, state.midiLower);
   pianoNotes = [...skipN(gen, 4)];
   currentNoteIndex = 0;

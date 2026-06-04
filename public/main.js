@@ -152,7 +152,17 @@ function drawChart(state) {
   const chartBottom = h - 20;
   const chartHeight = chartBottom - chartTop;
   const dBMin = -60;
-  const dBMax = 40;
+
+  function computeDB(gain, calGain) {
+    return 20 * Math.log10(gain / calGain + 1e-10);
+  }
+
+  const allDBs = [];
+  state.thresholdsLeft.forEach(t => allDBs.push(computeDB(t.gain, state.calibrationGainLeft)));
+  state.thresholdsRight.forEach(t => allDBs.push(computeDB(t.gain, state.calibrationGainRight)));
+  allDBs.push(computeDB(state.currentGain, state.ear === "left" ? state.calibrationGainLeft : state.calibrationGainRight));
+  const rawMax = Math.max(...allDBs);
+  const dBMax = Math.max(40, Math.ceil(rawMax / 20) * 20);
 
   function dBtoY(dB) {
     return Math.max(chartTop, Math.min(chartBottom, chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight));
@@ -165,14 +175,14 @@ function drawChart(state) {
   ctx2d.strokeStyle = "#333";
   ctx2d.fillStyle = "#777";
   ctx2d.font = "11px system-ui";
-  Array.from({ length: (dBMax - dBMin) / 20 + 1 }, (_, i) => dBMin + i * 20).forEach((dB) => {
+  for (let dB = dBMin; dB <= dBMax; dB += 20) {
     const y = chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
     ctx2d.beginPath();
     ctx2d.moveTo(40, y);
     ctx2d.lineTo(w - 10, y);
     ctx2d.stroke();
     ctx2d.fillText(dB + " dB", 3, y + 4);
-  });
+  }
 
   ctx2d.strokeStyle = "#444";
   ctx2d.beginPath();
