@@ -149,18 +149,22 @@ export function startTest() {
   playCurrentNote();
 }
 
+function upsertPoint(list, point) {
+  const idx = list.findIndex(p => p.freq === point.freq);
+  const next = idx === -1 ? [...list, point] : [...list.slice(0, idx), point, ...list.slice(idx + 1)];
+  return next.sort((a, b) => a.freq - b.freq);
+}
+
 export function markThreshold() {
   const state = _store.getState();
   const freq = pianoNotes[currentNoteIndex];
   const point = { x: state.currentX, freq, gain: state.currentGain };
 
   if (state.ear === "left") {
-    const thresholdsLeft = [...state.thresholdsLeft, point].sort((a, b) => a.freq - b.freq);
-    _store.setState({ thresholdsLeft, ear: "right" });
+    _store.setState({ thresholdsLeft: upsertPoint(state.thresholdsLeft, point), ear: "right" });
     playCurrentNote();
   } else {
-    const thresholdsRight = [...state.thresholdsRight, point].sort((a, b) => a.freq - b.freq);
-    _store.setState({ thresholdsRight });
+    _store.setState({ thresholdsRight: upsertPoint(state.thresholdsRight, point) });
     if (currentNoteIndex < pianoNotes.length - 1) {
       currentNoteIndex++;
       _store.setState({ ear: "left" });

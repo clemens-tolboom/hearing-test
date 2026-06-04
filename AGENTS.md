@@ -15,3 +15,4 @@ Next to read/write/edit you can use
 ## TODO
 
 - when fixed a todo mark is as such and move it into the done section
+- when user say next todo make sure to reread the todo file
