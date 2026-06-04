@@ -27,12 +27,13 @@
 - [x] Move all UI (DOM, chart, events) from ui.js into main.js
 - [x] Move all app constants to main.js entry point
 - [x] Pure domain logic in audio.js — no DOM, no button state
+- [x] Laat gebruiker freq onder/boven grens instellen .. voeg die ook toe aan imex van json ... dropdown met A octaaf noten
+- [x] de grafiek schaal niet mee met frequencies
+- [x] we hebben geen state transition manager ... de buttons doen het nog steeds niet goed/lekker ... kan bijv testfase niet stoppen/heeft geen kleur
 
 ## To Do
 
-- [x] Laat gebruiker freq onder/boven grens instellen .. voeg die ook toe aan imex van json ... dropdown met A octaaf noten
-- [x] de grafiek schaal niet mee met frequencies
-- [ ] we hebben geen state transition manager ... de buttons doen het nog steeds niet goed/lekker ... kan bijv testfase niet stoppen/heeft geen kleur
 - [ ] bij starten test fase moet met linker oor begonnen worden
+- [ ] de Y as moet bijschalen/afschalen als data er niet meer inpast of teveel boven/onder ruimte er is
 - [ ] Vind andere manier voor J/T-script-obfuscator\*\* (heavier obfuscation) via deno of bun(?)
 - [ ] **BFS frequentie generator** — binaire zoekboom i.p.v. lineaire pianonoten. Elk interval splitst in midden, pijltjes navigeren door de boom (omhoog/omlaag = ouder/kind, links/rechts = sibling). Gebruiker hoort een freq en kiest "wel/niet hoorbaar" totdat de drempel op een bepaalde diepte is bepaald.

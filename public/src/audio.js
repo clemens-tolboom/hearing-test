@@ -1,4 +1,5 @@
 import { logFreqFromX, xFromFreq, pianoFreqs, freqGen, skipN } from "./freq-gens.js";
+import { MODE, AUDIO, UPLOAD } from "./state-machine.js";
 
 let audioCtx = null;
 let osc = null;
@@ -13,12 +14,14 @@ let sweepStopped = false;
 let sweepRunning = false;
 
 let _store = null;
+let _stateMachine = null;
 let _midiLower = 55;
 let _midiHigher = 108;
 let _calibrationFreq = 1000;
 
-export function configure({ store, midiLower, midiHigher, calibrationFreq }) {
+export function configure({ store, stateMachine, midiLower, midiHigher, calibrationFreq }) {
   _store = store;
+  _stateMachine = stateMachine;
   _midiLower = midiLower;
   _midiHigher = midiHigher;
   _calibrationFreq = calibrationFreq;
@@ -32,6 +35,7 @@ export function ensureAudio() {
     audioCtx.resume();
   }
   _store.setState({ audioReady: true, audioRunning: audioCtx.state === "running" });
+  _stateMachine.transitionAudio(AUDIO.READY);
 }
 
 export function initAudio() {
@@ -123,28 +127,23 @@ export function prevNote() {
 }
 
 export function startCalibration() {
-  const ear = _store.getState().ear;
-  _store.setState({ mode: "calibrate" });
-  startOsc(_calibrationFreq, 0.0001);
-  _store.setState({ status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.` });
+  _stateMachine.transitionMode(MODE.CALIBRATING);
 }
 
 export function finishCalibration() {
   const state = _store.getState();
   const key = state.ear === "left" ? "calibrationGainLeft" : "calibrationGainRight";
-  _store.setState({
-    [key]: state.currentGain,
-    mode: "idle",
+  _store.setState({ [key]: state.currentGain });
+  _stateMachine.transitionMode(MODE.IDLE, {
     status: `${state.ear === "left" ? "Linker" : "Rechter"} oor gekalibreerd.`,
   });
-  stopOsc();
 }
 
 export function startTest() {
-  const gen = freqGen(pianoFreqs, _midiHigher, _midiLower);
+  const state = _store.getState();
+  const gen = freqGen(pianoFreqs, state.midiUpper, state.midiLower);
   pianoNotes = [...skipN(gen, 4)];
   currentNoteIndex = 0;
-  _store.setState({ mode: "test" });
   playCurrentNote();
 }
 
@@ -166,7 +165,9 @@ export function markThreshold() {
       playCurrentNote();
     } else {
       stopOsc();
-      _store.setState({ status: "Beide oren getest. Start nu de sweep." });
+      _stateMachine.transitionMode(MODE.IDLE, {
+        status: "Beide oren getest. Start nu de sweep.",
+      });
     }
   }
 }
@@ -188,7 +189,10 @@ export async function sweepEar(points, dur) {
     for (let s = 1; s <= steps; s++) {
       if (sweepStopped) return;
       const t = s / steps;
-      _store.setState({ currentX: xFromFreq(from.freq + (to.freq - from.freq) * t), currentGain: from.gain + (to.gain - from.gain) * t });
+      _store.setState({
+        currentX: xFromFreq(from.freq + (to.freq - from.freq) * t),
+        currentGain: from.gain + (to.gain - from.gain) * t,
+      });
       await new Promise(r => setTimeout(r, dur / steps));
     }
   }
@@ -203,12 +207,6 @@ export async function startSweep() {
   const state = _store.getState();
   const leftPts = [...state.thresholdsLeft].sort((a, b) => a.freq - b.freq);
   const rightPts = [...state.thresholdsRight].sort((a, b) => a.freq - b.freq);
-  if (leftPts.length < 2 && rightPts.length < 2) {
-    _store.setState({ status: "Niet genoeg drempels voor sweep (minimaal 2 per oor nodig)." });
-    sweepRunning = false;
-    return;
-  }
-  _store.setState({ mode: "sweep" });
   while (!sweepStopped) {
     if (leftPts.length >= 2) {
       _store.setState({ ear: "left", status: "Sweep linkeroor..." });
@@ -221,15 +219,32 @@ export async function startSweep() {
     }
   }
   stopOsc();
-  _store.setState({ mode: "idle", status: sweepStopped ? "Sweep gestopt." : "Sweep klaar." });
   sweepRunning = false;
+  _stateMachine.transitionMode(MODE.IDLE, {
+    status: sweepStopped ? "Sweep gestopt." : "Sweep klaar.",
+  });
 }
 
 export function stopSweep() {
   sweepStopped = true;
 }
 
+export function reset() {
+  stopOsc();
+  sweepStopped = false;
+  sweepRunning = false;
+  pianoNotes = [];
+  currentNoteIndex = 0;
+  gainRatioLeft = 0.5;
+  gainRatioRight = 0.5;
+}
+
 export function loadResults(file) {
+  if (_store.getState().mode !== MODE.IDLE) {
+    _store.setState({ status: "Upload alleen mogelijk in rust-modus." });
+    return;
+  }
+  _stateMachine.setUploadStatus(UPLOAD.BUSY);
   const reader = new FileReader();
   reader.onload = () => {
     try {
@@ -248,7 +263,6 @@ export function loadResults(file) {
         freqUpper: data.freqUpper ?? 7040,
         midiLower: data.midiLower ?? 45,
         midiUpper: data.midiUpper ?? 117,
-        mode: "idle",
         ear: "left",
         currentGain: 0.0001,
         currentX: 0.5,
@@ -257,8 +271,11 @@ export function loadResults(file) {
       };
       stopOsc();
       _store.setState(patch);
+      _stateMachine.recalcPermissions();
+      _stateMachine.setUploadStatus(UPLOAD.DONE);
     } catch (err) {
       _store.setState({ status: "Fout bij laden: " + err.message });
+      _stateMachine.setUploadStatus(UPLOAD.ERROR);
     }
   };
   reader.readAsText(file);

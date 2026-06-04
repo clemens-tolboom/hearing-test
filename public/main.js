@@ -1,5 +1,6 @@
 import { createStore } from "./src/state.js";
 import { configure as configureFreqGens, xFromFreq } from "./src/freq-gens.js";
+import { createStateMachine, MODE, AUDIO, UPLOAD } from "./src/state-machine.js";
 import * as Audio from "./src/audio.js";
 
 /* ---------------------------------------------------------
@@ -29,7 +30,9 @@ const DEFAULT_UPPER = A_OCTAVES[8];
 configureFreqGens({ fMin: DEFAULT_LOWER.freq, fMax: DEFAULT_UPPER.freq });
 
 const store = createStore({
-  mode: "idle",
+  mode: MODE.IDLE,
+  audioStatus: AUDIO.INIT,
+  uploadStatus: UPLOAD.IDLE,
   ear: "left",
   audioReady: false,
   audioRunning: false,
@@ -47,10 +50,46 @@ const store = createStore({
   freqUpper: DEFAULT_UPPER.freq,
   midiLower: DEFAULT_LOWER.midi,
   midiUpper: DEFAULT_UPPER.midi,
+  canUpload: false,
+  canCalibrate: false,
+  canTest: false,
+  canSweep: false,
+});
+
+const stateMachine = createStateMachine(store, {
+  onEnterMode: {
+    [MODE.IDLE]: () => {
+      stateMachine.recalcPermissions();
+      store.setState({ uploadStatus: UPLOAD.IDLE });
+    },
+    [MODE.CALIBRATING]: () => {
+      const ear = store.getState().ear;
+      Audio.startOsc(CALIBRATION_FREQ, 0.0001);
+      store.setState({
+        status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.`,
+      });
+    },
+    [MODE.TESTING]: () => Audio.startTest(),
+    [MODE.SWEEPING]: () => Audio.startSweep(),
+  },
+  onExitMode: {
+    [MODE.CALIBRATING]: () => Audio.stopOsc(),
+    [MODE.TESTING]: () => Audio.stopOsc(),
+    [MODE.SWEEPING]: () => Audio.stopOsc(),
+  },
+  onEnterAudio: {
+    [AUDIO.READY]: () => {
+      store.setState({ canUpload: true, canCalibrate: true });
+    },
+    [AUDIO.ERROR]: () => {
+      store.setState({ status: "Audio niet beschikbaar." });
+    },
+  },
 });
 
 Audio.configure({
   store,
+  stateMachine,
   midiLower: DEFAULT_LOWER.midi,
   midiHigher: DEFAULT_UPPER.midi,
   calibrationFreq: CALIBRATION_FREQ,
@@ -70,6 +109,7 @@ const btnTest = document.getElementById("btnTest");
 const btnSweep = document.getElementById("btnSweep");
 const btnDownload = document.getElementById("btnDownload");
 const btnUpload = document.getElementById("btnUpload");
+const btnReset = document.getElementById("btnReset");
 const fileInput = document.getElementById("fileInput");
 const selLower = document.getElementById("freqLower");
 const selUpper = document.getElementById("freqUpper");
@@ -95,6 +135,7 @@ function applyBounds(loFreq, hiFreq, loMidi, hiMidi) {
   configureFreqGens({ fMin: loFreq, fMax: hiFreq });
   Audio.configure({
     store,
+    stateMachine,
     midiLower: loMidi,
     midiHigher: hiMidi,
     calibrationFreq: CALIBRATION_FREQ,
@@ -114,13 +155,7 @@ function drawChart(state) {
   const dBMax = 40;
 
   function dBtoY(dB) {
-    return Math.max(
-      chartTop,
-      Math.min(
-        chartBottom,
-        chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight,
-      ),
-    );
+    return Math.max(chartTop, Math.min(chartBottom, chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight));
   }
 
   ctx2d.clearRect(0, 0, w, h);
@@ -130,10 +165,7 @@ function drawChart(state) {
   ctx2d.strokeStyle = "#333";
   ctx2d.fillStyle = "#777";
   ctx2d.font = "11px system-ui";
-  Array.from(
-    { length: (dBMax - dBMin) / 20 + 1 },
-    (_, i) => dBMin + i * 20,
-  ).forEach((dB) => {
+  Array.from({ length: (dBMax - dBMin) / 20 + 1 }, (_, i) => dBMin + i * 20).forEach((dB) => {
     const y = chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
     ctx2d.beginPath();
     ctx2d.moveTo(40, y);
@@ -177,20 +209,21 @@ function drawChart(state) {
   drawList(state.thresholdsRight, "#fa3", state.calibrationGainRight);
 
   const xCur = 40 + state.currentX * (w - 60);
-  const dB =
-    20 *
-    Math.log10(
-      state.currentGain /
-        (state.ear === "left"
-          ? state.calibrationGainLeft
-          : state.calibrationGainRight) +
-        1e-10,
-    );
+  const dB = 20 * Math.log10(state.currentGain / (state.ear === "left" ? state.calibrationGainLeft : state.calibrationGainRight) + 1e-10);
   const yCur = dBtoY(dB);
   ctx2d.fillStyle = "#58a";
   ctx2d.beginPath();
   ctx2d.arc(xCur, yCur, 4, 0, Math.PI * 2);
   ctx2d.fill();
+}
+
+/* ---------------------------------------------------------
+   HELPERS
+--------------------------------------------------------- */
+function setBtn(el, text, cls, disabled) {
+  el.textContent = text;
+  el.className = cls;
+  el.disabled = disabled;
 }
 
 /* ---------------------------------------------------------
@@ -201,64 +234,62 @@ function renderUI(state) {
   statusEl.textContent = state.status;
   infoEl.textContent = state.info;
 
+  const mode = state.mode;
   const leftDone = state.calibrationGainLeft !== 0.001;
   const rightDone = state.calibrationGainRight !== 0.001;
-  const hasData =
-    state.thresholdsLeft.length + state.thresholdsRight.length > 0;
+  const hasData = state.thresholdsLeft.length + state.thresholdsRight.length > 0;
 
-  if (state.audioRunning) {
-    btnInit.className = "ready";
-    btnInit.textContent = "Audio ✓";
-  } else if (state.audioReady) {
-    btnInit.className = "pending";
-    btnInit.textContent = "Audio ⏳";
+  /* ---- Audio init ---- */
+  const audioClass = state.audioStatus === AUDIO.READY ? "ready" : state.audioStatus === AUDIO.INIT ? "pending" : "error";
+  const audioText = state.audioStatus === AUDIO.READY ? "Audio ✓" : state.audioStatus === AUDIO.INIT ? "Audio ⏳" : "Audio ✗";
+  setBtn(btnInit, audioText, audioClass, false);
+
+  /* ---- Calibrate ---- */
+  const calClass = leftDone && rightDone ? "ready" : leftDone || rightDone ? "pending" : "error";
+  const calText = leftDone && rightDone ? "Kalibratie ✓" : leftDone || rightDone ? "Kalibratie ⏳" : "Kalibratie ✗";
+  setBtn(btnCalibrate, calText, calClass, mode !== MODE.IDLE || !state.canCalibrate);
+
+  /* ---- Test ---- */
+  if (mode === MODE.IDLE) {
+    setBtn(btnTest, "Start test", state.canTest ? "ready" : "error", !state.canTest);
+  } else if (mode === MODE.TESTING) {
+    setBtn(btnTest, "Stop test", "error", false);
   } else {
-    btnInit.className = "error";
-    btnInit.textContent = "Audio ✗";
+    setBtn(btnTest, "Start test", "", true);
   }
 
-  btnCalibrate.disabled = state.mode !== "idle" || !state.audioReady;
-  if (leftDone && rightDone) {
-    btnCalibrate.className = "ready";
-    btnCalibrate.textContent = "Kalibratie ✓";
-  } else if (leftDone || rightDone) {
-    btnCalibrate.className = "pending";
-    btnCalibrate.textContent = "Kalibratie ⏳";
+  /* ---- Sweep ---- */
+  if (mode === MODE.SWEEPING) {
+    setBtn(btnSweep, "Stop sweep", "error", false);
   } else {
-    btnCalibrate.className = "error";
-    btnCalibrate.textContent = "Kalibratie ✗";
+    setBtn(btnSweep, "Sweep", state.canSweep ? "ready" : "", !state.canSweep);
   }
 
-  btnTest.disabled = state.mode !== "idle" || !leftDone || !rightDone;
+  /* ---- Upload ---- */
+  const upBusy = state.uploadStatus === UPLOAD.BUSY;
+  const upErr = state.uploadStatus === UPLOAD.ERROR;
+  const upDone = state.uploadStatus === UPLOAD.DONE;
+  setBtn(btnUpload,
+    upBusy ? "Bezig..." : upErr ? "Upload ✗" : upDone ? "Upload ✓" : "Upload resultaten",
+    upBusy ? "pending" : upErr ? "error" : upDone ? "ready" : "",
+    !state.canUpload || upBusy || mode !== MODE.IDLE);
 
-  if (state.mode === "sweep") {
-    btnSweep.className = "error";
-    btnSweep.textContent = "Stop sweep";
-    btnSweep.disabled = false;
-  } else {
-    btnSweep.className = hasData ? "ready" : "";
-    btnSweep.textContent = "Sweep";
-    btnSweep.disabled = !hasData;
-  }
+  /* ---- Download ---- */
+  setBtn(btnDownload, "Download resultaten", "", !hasData);
 
-  btnDownload.disabled = !hasData;
+  /* ---- Reset ---- */
+  const isBusy = mode === MODE.CALIBRATING || mode === MODE.TESTING || mode === MODE.SWEEPING;
+  setBtn(btnReset, isBusy ? "Stop" : "Reset", "", false);
 
-  selLower.disabled = state.mode !== "idle";
-  selUpper.disabled = state.mode !== "idle";
+  /* ---- Dropdowns ---- */
+  selLower.disabled = mode !== MODE.IDLE;
+  selUpper.disabled = mode !== MODE.IDLE;
 
+  /* ---- Sync dropdown indices on load/upload ---- */
   if (state.freqLower !== _cachedLower || state.freqUpper !== _cachedUpper) {
-    selLower.selectedIndex = A_OCTAVES.findIndex(
-      (o) => o.freq === state.freqLower,
-    );
-    selUpper.selectedIndex = A_OCTAVES.findIndex(
-      (o) => o.freq === state.freqUpper,
-    );
-    applyBounds(
-      state.freqLower,
-      state.freqUpper,
-      state.midiLower,
-      state.midiUpper,
-    );
+    selLower.selectedIndex = A_OCTAVES.findIndex((o) => o.freq === state.freqLower);
+    selUpper.selectedIndex = A_OCTAVES.findIndex((o) => o.freq === state.freqUpper);
+    applyBounds(state.freqLower, state.freqUpper, state.midiLower, state.midiUpper);
   }
 }
 
@@ -275,11 +306,37 @@ inputVolume.oninput = () => {
   }
 };
 
-btnCalibrate.onclick = () => Audio.startCalibration();
-btnTest.onclick = () => Audio.startTest();
+btnCalibrate.onclick = () => stateMachine.transitionMode(MODE.CALIBRATING);
+
+btnTest.onclick = () => {
+  if (store.getState().mode === MODE.TESTING) {
+    stateMachine.transitionMode(MODE.IDLE, { status: "Test gestopt." });
+  } else {
+    stateMachine.transitionMode(MODE.TESTING);
+  }
+};
+
 btnSweep.onclick = () => {
-  if (store.getState().mode === "sweep") Audio.stopSweep();
-  else Audio.startSweep();
+  if (store.getState().mode === MODE.SWEEPING) {
+    Audio.stopSweep();
+  } else {
+    stateMachine.transitionMode(MODE.SWEEPING);
+  }
+};
+
+btnReset.onclick = () => {
+  Audio.reset();
+  store.setState({
+    calibrationGainLeft: 0.001,
+    calibrationGainRight: 0.001,
+    thresholdsLeft: [],
+    thresholdsRight: [],
+    currentGain: 0.0001,
+    currentX: 0.5,
+    ear: "left",
+    info: "",
+  });
+  stateMachine.transitionMode(MODE.IDLE, { status: "Reset." });
 };
 btnDownload.onclick = () => Audio.downloadResults();
 btnUpload.onclick = () => fileInput.click();
@@ -342,9 +399,9 @@ window.addEventListener("keydown", (e) => {
     const ear = state.ear === "left" ? "right" : "left";
     store.setState({ ear });
     Audio.setPan(ear);
-    if (state.mode === "test") {
+    if (state.mode === MODE.TESTING) {
       Audio.playCurrentNote();
-    } else if (state.mode === "calibrate") {
+    } else if (state.mode === MODE.CALIBRATING) {
       store.setState({
         status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.`,
       });
@@ -352,16 +409,16 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
-  if (state.mode === "calibrate") {
+  if (state.mode === MODE.CALIBRATING) {
     if (e.key === "ArrowUp") Audio.setGain(state.currentGain * 1.1);
     if (e.key === "ArrowDown") Audio.setGain(state.currentGain / 1.1);
-    if (e.key === " ") Audio.finishCalibration();
+    if (e.key === " ") { e.preventDefault(); Audio.finishCalibration(); }
   }
 
-  if (state.mode === "test") {
+  if (state.mode === MODE.TESTING) {
     if (e.key === "ArrowRight") Audio.nextNote();
     if (e.key === "ArrowLeft") Audio.prevNote();
-    if (e.key === " ") Audio.markThreshold();
+    if (e.key === " ") { e.preventDefault(); Audio.markThreshold(); }
   }
 });
 
