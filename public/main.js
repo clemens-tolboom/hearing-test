@@ -6,16 +6,27 @@ import * as Audio from "./src/audio.js";
    APP CONSTANTS
 --------------------------------------------------------- */
 const APP_VERSION = "0.1.0";
-const F_MIN = 110;
-const F_MAX = 4186;
 const CALIBRATION_FREQ = 1000;
-const MIDI_LOWER = 55;
-const MIDI_HIGHER = 108;
+
+const A_OCTAVES = [
+  { label: "A0", midi: 21, freq: 27.5 },
+  { label: "A1", midi: 33, freq: 55 },
+  { label: "A2", midi: 45, freq: 110 },
+  { label: "A3", midi: 57, freq: 220 },
+  { label: "A4", midi: 69, freq: 440 },
+  { label: "A5", midi: 81, freq: 880 },
+  { label: "A6", midi: 93, freq: 1760 },
+  { label: "A7", midi: 105, freq: 3520 },
+  { label: "A8", midi: 117, freq: 7040 },
+];
+
+const DEFAULT_LOWER = A_OCTAVES[4];
+const DEFAULT_UPPER = A_OCTAVES[8];
 
 /* ---------------------------------------------------------
    CONFIGURE MODULES
 --------------------------------------------------------- */
-configureFreqGens({ fMin: F_MIN, fMax: F_MAX });
+configureFreqGens({ fMin: DEFAULT_LOWER.freq, fMax: DEFAULT_UPPER.freq });
 
 const store = createStore({
   mode: "idle",
@@ -32,12 +43,16 @@ const store = createStore({
   thresholdsRight: [],
   status: "",
   info: "",
+  freqLower: DEFAULT_LOWER.freq,
+  freqUpper: DEFAULT_UPPER.freq,
+  midiLower: DEFAULT_LOWER.midi,
+  midiUpper: DEFAULT_UPPER.midi,
 });
 
 Audio.configure({
   store,
-  midiLower: MIDI_LOWER,
-  midiHigher: MIDI_HIGHER,
+  midiLower: DEFAULT_LOWER.midi,
+  midiHigher: DEFAULT_UPPER.midi,
   calibrationFreq: CALIBRATION_FREQ,
 });
 
@@ -56,8 +71,35 @@ const btnSweep = document.getElementById("btnSweep");
 const btnDownload = document.getElementById("btnDownload");
 const btnUpload = document.getElementById("btnUpload");
 const fileInput = document.getElementById("fileInput");
+const selLower = document.getElementById("freqLower");
+const selUpper = document.getElementById("freqUpper");
+
+let _cachedLower = DEFAULT_LOWER.freq;
+let _cachedUpper = DEFAULT_UPPER.freq;
 
 document.getElementById("version").textContent = "v" + APP_VERSION;
+
+/* ---------------------------------------------------------
+   POPULATE DROPDOWNS
+--------------------------------------------------------- */
+A_OCTAVES.forEach((oct, i) => {
+  selLower.appendChild(new Option(oct.label, i));
+  selUpper.appendChild(new Option(oct.label, i));
+});
+selLower.selectedIndex = 2;
+selUpper.selectedIndex = 8;
+
+function applyBounds(loFreq, hiFreq, loMidi, hiMidi) {
+  _cachedLower = loFreq;
+  _cachedUpper = hiFreq;
+  configureFreqGens({ fMin: loFreq, fMax: hiFreq });
+  Audio.configure({
+    store,
+    midiLower: loMidi,
+    midiHigher: hiMidi,
+    calibrationFreq: CALIBRATION_FREQ,
+  });
+}
 
 /* ---------------------------------------------------------
    CHART
@@ -109,11 +151,15 @@ function drawChart(state) {
 
   ctx2d.fillStyle = "#555";
   ctx2d.font = "12px system-ui";
-  Array.from({ length: 6 }, (_, i) => 125 * Math.pow(2, i)).forEach((f) => {
+  const firstOct = Math.ceil(Math.log2(state.freqLower / 125));
+  const lastOct = Math.floor(Math.log2(state.freqUpper / 125));
+  for (let n = firstOct; n <= lastOct; n++) {
+    const f = 125 * Math.pow(2, n);
     const x = 40 + xFromFreq(f) * (w - 60);
+    const label = f >= 1000 ? (f / 1000).toFixed(0) + "k" : Math.round(f).toString();
     ctx2d.fillRect(x, chartBottom, 1, 5);
-    ctx2d.fillText(f.toString(), x - 10, chartBottom + 14);
-  });
+    ctx2d.fillText(label, x - 10, chartBottom + 14);
+  }
 
   function drawList(list, color, calGain) {
     ctx2d.fillStyle = color;
@@ -196,6 +242,24 @@ function renderUI(state) {
   }
 
   btnDownload.disabled = !hasData;
+
+  selLower.disabled = state.mode !== "idle";
+  selUpper.disabled = state.mode !== "idle";
+
+  if (state.freqLower !== _cachedLower || state.freqUpper !== _cachedUpper) {
+    selLower.selectedIndex = A_OCTAVES.findIndex(
+      (o) => o.freq === state.freqLower,
+    );
+    selUpper.selectedIndex = A_OCTAVES.findIndex(
+      (o) => o.freq === state.freqUpper,
+    );
+    applyBounds(
+      state.freqLower,
+      state.freqUpper,
+      state.midiLower,
+      state.midiUpper,
+    );
+  }
 }
 
 store.subscribe(renderUI);
@@ -222,6 +286,28 @@ btnUpload.onclick = () => fileInput.click();
 fileInput.onchange = () => {
   if (fileInput.files[0]) Audio.loadResults(fileInput.files[0]);
 };
+
+/* ---------------------------------------------------------
+   FREQ BOUNDS DROPDOWNS
+--------------------------------------------------------- */
+function onBoundChange() {
+  const lo = A_OCTAVES[parseInt(selLower.value)];
+  const hi = A_OCTAVES[parseInt(selUpper.value)];
+  if (lo.midi >= hi.midi) {
+    store.setState({ status: "Ondergrens moet lager zijn dan bovengrens." });
+    return;
+  }
+  store.setState({
+    freqLower: lo.freq,
+    freqUpper: hi.freq,
+    midiLower: lo.midi,
+    midiUpper: hi.midi,
+  });
+  applyBounds(lo.freq, hi.freq, lo.midi, hi.midi);
+}
+
+selLower.addEventListener("change", onBoundChange);
+selUpper.addEventListener("change", onBoundChange);
 
 /* ---------------------------------------------------------
    DRAG & DROP — upload

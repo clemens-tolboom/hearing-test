@@ -244,6 +244,10 @@ export function loadResults(file) {
         calibrationGainRight: right.calibration?.gain ?? 0.001,
         thresholdsLeft: left.thresholds ?? [],
         thresholdsRight: right.thresholds ?? [],
+        freqLower: data.freqLower ?? 110,
+        freqUpper: data.freqUpper ?? 7040,
+        midiLower: data.midiLower ?? 45,
+        midiUpper: data.midiUpper ?? 117,
         mode: "idle",
         ear: "left",
         currentGain: 0.0001,
@@ -266,6 +270,10 @@ export function downloadResults() {
     timestamp: new Date().toISOString(),
     os: navigator.userAgent,
     systemVolume: state.systemVolume,
+    freqLower: state.freqLower,
+    freqUpper: state.freqUpper,
+    midiLower: state.midiLower,
+    midiUpper: state.midiUpper,
     ears: {
       left: {
         calibration: { frequency: state.calibrationFreq, gain: state.calibrationGainLeft },

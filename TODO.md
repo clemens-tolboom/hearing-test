@@ -28,27 +28,11 @@
 - [x] Move all app constants to main.js entry point
 - [x] Pure domain logic in audio.js — no DOM, no button state
 
-## To Do — bundling & deploy
+## To Do
 
-- [ ] **Option A: esbuild bundle** — `npx esbuild main.js --bundle --format=esm --outfile=dist/bundle.js --minify`<br>
-      Output is minified ESM. HTML: `<script type="module" src="dist/bundle.js">`.<br>
-      Local test: `npx serve dist`. GitHub Pages: push `dist/`.
-
-- [ ] **Option B: deno bundle** — `deno bundle main.js > bundle.js`<br>
-      Output is flat IIFE (no native modules). HTML: `<script src="bundle.js">` (no `type="module"`).<br>
-      Works from `file://` and GitHub Pages.
-
-- [ ] **Option C: esbuild + javascript-obfuscator** (heavier obfuscation)<br>
-      `npx esbuild main.js --bundle --format=esm --outfile=dist/bundle.js`<br>
-      `npx javascript-obfuscator dist/bundle.js --output dist/bundle.js --compact true --control-flow-flattening true`<br>
-      HTML: `<script type="module" src="dist/bundle.js">`.
-
-- [ ] **Option D: just push raw modules to GitHub Pages** (no obfuscation, simplest)<br>
-      Native ESM works on GitHub Pages (proper MIME types over HTTPS).<br>
-      HTML stays as-is: `<script type="module" src="main.js">`. No build step, zero config.
-
-**Local development server** (for any option):
-```
-deno run --allow-net --allow-read jsr:@std/http/file-server .
-```
-Or: `npx serve .` / `python -m http.server`
+- [x] Laat gebruiker freq onder/boven grens instellen .. voeg die ook toe aan imex van json ... dropdown met A octaaf noten
+- [x] de grafiek schaal niet mee met frequencies
+- [ ] we hebben geen state transition manager ... de buttons doen het nog steeds niet goed/lekker ... kan bijv testfase niet stoppen/heeft geen kleur
+- [ ] bij starten test fase moet met linker oor begonnen worden
+- [ ] Vind andere manier voor J/T-script-obfuscator\*\* (heavier obfuscation) via deno of bun(?)
+- [ ] **BFS frequentie generator** — binaire zoekboom i.p.v. lineaire pianonoten. Elk interval splitst in midden, pijltjes navigeren door de boom (omhoog/omlaag = ouder/kind, links/rechts = sibling). Gebruiker hoort een freq en kiest "wel/niet hoorbaar" totdat de drempel op een bepaalde diepte is bepaald.
