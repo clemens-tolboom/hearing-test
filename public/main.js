@@ -150,12 +150,11 @@ function applyBounds(loFreq, hiFreq, loMidi, hiMidi) {
 --------------------------------------------------------- */
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = canvas.clientWidth * dpr;
-  canvas.height = canvas.clientHeight * dpr;
+  canvas.width = Math.floor(canvas.clientWidth * dpr);
+  canvas.height = Math.floor(canvas.clientHeight * dpr);
 }
 
 function drawChart(state) {
-  resizeCanvas();
   const dpr = window.devicePixelRatio || 1;
   ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -240,8 +239,6 @@ function drawChart(state) {
   ctx2d.fill();
 }
 
-window.addEventListener("resize", () => renderUI(store.getState()));
-
 /* ---------------------------------------------------------
    HELPERS
 --------------------------------------------------------- */
@@ -318,8 +315,10 @@ function renderUI(state) {
   }
 }
 
+resizeCanvas();
 store.subscribe(renderUI);
 renderUI(store.getState());
+new ResizeObserver(() => { resizeCanvas(); renderUI(store.getState()); }).observe(canvas);
 
 /* ---------------------------------------------------------
    BUTTON HANDLERS
