@@ -15,7 +15,6 @@
 
     <div class="panel">
         <button id="btnInit" title="AudioContext starten">Audio initialiseren</button>
-        <input type="number" id="inputVolume" value="50" min="0" max="100">
         <button id="btnCalibrate" disabled title="Per oor kalibreren op 1 kHz">Kalibratie</button>
         <button id="btnTest" disabled title="Drempelwaarden meten per oor">Testfase</button>
         <button id="btnSweep" disabled title="Continue sweep door alle drempels">Sweep</button>
@@ -32,8 +31,8 @@
 
     <div class="panel">
         <div class="ear-row">
-            <button id="btnLeftEar" class="ear-btn active">Linkeroor</button>
-            <button id="btnRightEar" class="ear-btn">Rechteroor</button>
+            <button id="btnLeftEar" class="ear-btn active"><span class="ear-icon left">👂</span> Links</button>
+            <button id="btnRightEar" class="ear-btn"><span class="ear-icon right">👂</span> Rechts</button>
         </div>
         <canvas id="chart"></canvas>
         <div id="mobileControls" class="mobile-controls">
@@ -51,7 +50,7 @@
         <div id="info" class="status"></div>
     </div>
 
-    <script type="module" src="main.js?v=0.2.2"></script>
+    <script type="module" src="main.js?v=0.2.4"></script>
 
 </body>
 

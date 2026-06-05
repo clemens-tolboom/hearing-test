@@ -40,7 +40,7 @@ export function ensureAudio() {
 
 export function initAudio() {
   ensureAudio();
-  _store.setState({ status: "Audio geactiveerd. Systeemvolume is optioneel. Start kalibratie." });
+  _store.setState({ status: "Audio geactiveerd. Start kalibratie." });
 }
 
 export function isAudioRunning() {
@@ -259,7 +259,6 @@ export function loadResults(file) {
       const right = data.ears && data.ears.right;
       if (!left || !right) throw new Error("Ongeldig bestand: 'ears.left' of 'ears.right' ontbreekt.");
       const patch = {
-        systemVolume: data.systemVolume ?? 50,
         calibrationFreq: left.calibration?.frequency ?? _calibrationFreq,
         calibrationGainLeft: left.calibration?.gain ?? 0.001,
         calibrationGainRight: right.calibration?.gain ?? 0.001,
@@ -292,7 +291,6 @@ export function downloadResults() {
   const data = {
     timestamp: new Date().toISOString(),
     os: navigator.userAgent,
-    systemVolume: state.systemVolume,
     freqLower: state.freqLower,
     freqUpper: state.freqUpper,
     midiLower: state.midiLower,

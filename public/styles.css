@@ -82,6 +82,14 @@ canvas {
     font-size: 0.9rem;
     transition: all 0.15s;
 }
+.ear-icon {
+    display: inline-block;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+.ear-icon.left {
+    transform: scaleX(-1);
+}
 .ear-btn.active {
     background: #2a5;
     border-color: #2a5;

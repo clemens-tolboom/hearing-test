@@ -6,7 +6,7 @@ import * as Audio from "./src/audio.js";
 /* ---------------------------------------------------------
    APP CONSTANTS
 --------------------------------------------------------- */
-const APP_VERSION = "0.2.2";
+const APP_VERSION = "0.2.4";
 const CALIBRATION_FREQ = 1000;
 
 const A_OCTAVES = [
@@ -41,7 +41,6 @@ const store = createStore({
   calibrationFreq: CALIBRATION_FREQ,
   currentGain: 0.0001,
   currentX: 0.5,
-  systemVolume: 50,
   thresholdsLeft: [],
   thresholdsRight: [],
   status: "",
@@ -106,7 +105,6 @@ const infoEl = document.getElementById("info");
 const canvas = document.getElementById("chart");
 const ctx2d = canvas.getContext("2d");
 const btnInit = document.getElementById("btnInit");
-const inputVolume = document.getElementById("inputVolume");
 const btnCalibrate = document.getElementById("btnCalibrate");
 const btnTest = document.getElementById("btnTest");
 const btnSweep = document.getElementById("btnSweep");
@@ -364,13 +362,6 @@ new ResizeObserver(() => { resizeCanvas(); renderUI(store.getState()); }).observ
 /* ---------------------------------------------------------
    BUTTON HANDLERS
 --------------------------------------------------------- */
-inputVolume.oninput = () => {
-  const v = parseInt(inputVolume.value, 10);
-  if (!isNaN(v) && v >= 0 && v <= 100) {
-    store.setState({ systemVolume: v });
-  }
-};
-
 btnCalibrate.onclick = () => stateMachine.transitionMode(MODE.CALIBRATING);
 
 btnTest.onclick = () => {
