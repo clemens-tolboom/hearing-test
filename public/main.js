@@ -6,7 +6,7 @@ import * as Audio from "./src/audio.js";
 /* ---------------------------------------------------------
    APP CONSTANTS
 --------------------------------------------------------- */
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.2.1";
 const CALIBRATION_FREQ = 1000;
 
 const A_OCTAVES = [
@@ -481,14 +481,20 @@ canvas.addEventListener("wheel", (e) => {
   else Audio.setGain(state.currentGain / 1.1);
 });
 
-/* ---- Touch volume control ---- */
+/* ---- Touch volume (mobile mousewheel) ---- */
+let _touchStartY = 0;
+let _touchLastGain = 0;
 canvas.addEventListener("touchstart", (e) => {
   if (!Audio.isAudioRunning()) return;
-  const rect = canvas.getBoundingClientRect();
-  const y = (e.touches[0].clientY - rect.top) / rect.height;
-  const state = store.getState();
-  if (y < 0.5) Audio.setGain(state.currentGain * 1.1);
-  else Audio.setGain(state.currentGain / 1.1);
+  _touchStartY = e.touches[0].clientY;
+  _touchLastGain = store.getState().currentGain;
+}, { passive: true });
+canvas.addEventListener("touchmove", (e) => {
+  if (!Audio.isAudioRunning()) return;
+  const deltaY = _touchStartY - e.touches[0].clientY;
+  const factor = Math.pow(1.05, deltaY / 10);
+  const g = Math.max(0.0000001, _touchLastGain * factor);
+  Audio.setGain(g);
 }, { passive: true });
 
 /* ---------------------------------------------------------
