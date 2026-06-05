@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hoor Test – Piano Frequencies</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <h1>Hoor Test – Piano Frequencies <span id="version"></span></h1>
+
+    <div class="panel">
+        <button id="btnInit" title="AudioContext starten">Audio initialiseren</button>
+        <button id="btnCalibrate" disabled title="Per oor kalibreren op 1 kHz">Kalibratie</button>
+        <button id="btnTest" disabled title="Drempelwaarden meten per oor">Testfase</button>
+        <button id="btnSweep" disabled title="Continue sweep door alle drempels">Sweep</button>
+        <button id="btnDownload" disabled title="Resultaten exporteren als JSON">Download resultaten</button>
+        <input type="file" id="fileInput" accept=".json" hidden>
+        <button id="btnUpload" title="Eerder resultaat importeren">Upload resultaten</button>
+        <button id="btnReset" title="Alle data wissen en stoppen">Reset</button>
+        <div class="row" style="margin-top:0.5rem">
+            <label>Ondergrens <select id="freqLower"></select></label>
+            <label style="margin-left:0.5rem">Bovengrens <select id="freqUpper"></select></label>
+        </div>
+        <div id="status" class="status"></div>
+    </div>
+
+    <div class="panel">
+        <div class="ear-row">
+            <button id="btnLeftEar" class="ear-btn active"><span class="ear-icon left">👂</span></button>
+            <button id="btnRightEar" class="ear-btn"><span class="ear-icon right">👂</span></button>
+        </div>
+        <canvas id="chart"></canvas>
+        <div id="mobileControls" class="mobile-controls">
+            <div id="calControls" class="ctrl-group">
+                <button id="btnVolDown" class="ctrl-btn">− Vol</button>
+                <button id="btnVolUp" class="ctrl-btn">+ Vol</button>
+                <button id="btnConfirm" class="ctrl-btn ctrl-primary">Bevestig</button>
+            </div>
+            <div id="testControls" class="ctrl-group">
+                <button id="btnPrevNote" class="ctrl-btn">← Vorige</button>
+                <button id="btnNextNote" class="ctrl-btn">Volgende →</button>
+                <button id="btnMarkThreshold" class="ctrl-btn ctrl-primary">Markeer</button>
+            </div>
+        </div>
+        <div id="info" class="status"></div>
+    </div>
+
+    <script type="module" src="main.js?v=0.2.5"></script>
+
+</body>
+
+</html>

@@ -156,9 +156,9 @@ Optional bundling for production:
 
 | Tool                 | Command                                                                                                                                                                                |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| esbuild              | `npx esbuild main.js --bundle --format=esm --outfile=dist/bundle.js --minify`                                                                                                          |
+| esbuild              | `npx esbuild main.js --bundle --format=esm --outfile=docs/bundle.js --minify`                                                                                                          |
 | deno bundle          | `deno bundle main.js > bundle.js`                                                                                                                                                      |
-| esbuild + obfuscator | `npx esbuild main.js --bundle --format=esm --outfile=dist/bundle.js && npx javascript-obfuscator dist/bundle.js --output dist/bundle.js --compact true --control-flow-flattening true` |
+| esbuild + obfuscator | `npx esbuild main.js --bundle --format=esm --outfile=docs/bundle.js && npx javascript-obfuscator docs/bundle.js --output docs/bundle.js --compact true --control-flow-flattening true` |
 
 ### Known Issues
 
