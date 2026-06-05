@@ -11,6 +11,7 @@ We also have a TODO.md managed by the user and agent.
 Next to read/write/edit you can use
 
 - `deno check`
+- `git status`
 
 The user runs other `deno task` to test new code.
 

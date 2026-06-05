@@ -36,10 +36,9 @@
 - [x] bug: 1 test can only have 1 data point for a given freq — upsert i.p.v. append
 - [x] feat: create for dist/ using `deno bundle` + `deno task copy2dist` (copy static assets + HTML)
 - [x] Calibration has own states (auto left→right ear advance). Pressing calibrate reuses last values.
+- [x] Graph scales with screen size (responsive) — canvas resizes on window resize + HiDPI support
 
 ## Open
-
-- [ ] graph should scale with screen size (responsive)
 - [ ] is site mobile-friendly? test and fix any issues
 - [ ] feat: when uploading is must be possible to multi layer test results ... add after tekst 'Grafiek' buttons with test result date ... clicking hide/show them ... maximal 3 layers
 - [ ] **BFS frequentie generator** — binaire zoekboom i.p.v. lineaire pianonoten. Elk interval splitst in midden, pijltjes navigeren door de boom (omhoog/omlaag = ouder/kind, links/rechts = sibling). Gebruiker hoort een freq en kiest "wel/niet hoorbaar" totdat de drempel op een bepaalde diepte is bepaald.

@@ -148,9 +148,19 @@ function applyBounds(loFreq, hiFreq, loMidi, hiMidi) {
 /* ---------------------------------------------------------
    CHART
 --------------------------------------------------------- */
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.clientWidth * dpr;
+  canvas.height = canvas.clientHeight * dpr;
+}
+
 function drawChart(state) {
-  const w = canvas.width;
-  const h = canvas.height;
+  resizeCanvas();
+  const dpr = window.devicePixelRatio || 1;
+  ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
   const chartTop = 10;
   const chartBottom = h - 20;
   const chartHeight = chartBottom - chartTop;
@@ -229,6 +239,8 @@ function drawChart(state) {
   ctx2d.arc(xCur, yCur, 4, 0, Math.PI * 2);
   ctx2d.fill();
 }
+
+window.addEventListener("resize", () => renderUI(store.getState()));
 
 /* ---------------------------------------------------------
    HELPERS
