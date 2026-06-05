@@ -39,6 +39,10 @@
 - [x] Graph scales with screen size (responsive) — canvas resizes on window resize + HiDPI support
 
 ## Open
+
 - [ ] is site mobile-friendly? test and fix any issues
+- [ ] how to mobile mousewheel?
+- [ ] place ear icons on graph
+- [ ] is text in Stappen needed? maybe replace with icons + tooltips
 - [ ] feat: when uploading is must be possible to multi layer test results ... add after tekst 'Grafiek' buttons with test result date ... clicking hide/show them ... maximal 3 layers
 - [ ] **BFS frequentie generator** — binaire zoekboom i.p.v. lineaire pianonoten. Elk interval splitst in midden, pijltjes navigeren door de boom (omhoog/omlaag = ouder/kind, links/rechts = sibling). Gebruiker hoort een freq en kiest "wel/niet hoorbaar" totdat de drempel op een bepaalde diepte is bepaald.

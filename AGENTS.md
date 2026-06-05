@@ -19,6 +19,8 @@ The user runs other `deno task` to test new code.
 
 - when fixed a todo from the `Open` section mark it done and move it into the `Done` section
 - when user say next todo make sure to reread the todo file
+- when fixed a todo make sure to increment the version number `const APP_VERSION = "0.1.1";` in `main.js` and also update `?v=` in `index.html`'s script tag. Then tell the user the new version number.
+- when user replies with "not working" asked for the current version number.
 
 ## Code
 

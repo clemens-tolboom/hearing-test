@@ -6,7 +6,7 @@ import * as Audio from "./src/audio.js";
 /* ---------------------------------------------------------
    APP CONSTANTS
 --------------------------------------------------------- */
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "0.1.1";
 const CALIBRATION_FREQ = 1000;
 
 const A_OCTAVES = [
@@ -114,6 +114,8 @@ const btnDownload = document.getElementById("btnDownload");
 const btnUpload = document.getElementById("btnUpload");
 const btnReset = document.getElementById("btnReset");
 const fileInput = document.getElementById("fileInput");
+const btnLeftEar = document.getElementById("btnLeftEar");
+const btnRightEar = document.getElementById("btnRightEar");
 const selLower = document.getElementById("freqLower");
 const selUpper = document.getElementById("freqUpper");
 
@@ -242,7 +244,7 @@ function drawChart(state) {
   const xCur = leftPad + state.currentX * pf;
   const dB = 20 * Math.log10(state.currentGain / (state.ear === "left" ? state.calibrationGainLeft : state.calibrationGainRight) + 1e-10);
   const yCur = dBtoY(dB);
-  ctx2d.fillStyle = "#58a";
+  ctx2d.fillStyle = state.ear === "left" ? "#2a5" : "#fa3";
   ctx2d.beginPath();
   ctx2d.arc(xCur, yCur, curDotR, 0, Math.PI * 2);
   ctx2d.fill();
@@ -255,6 +257,20 @@ function setBtn(el, text, cls, disabled) {
   el.textContent = text;
   el.className = cls;
   el.disabled = disabled;
+}
+
+function switchEar(ear) {
+  const state = store.getState();
+  if (ear === state.ear) return;
+  store.setState({ ear });
+  Audio.setPan(ear);
+  if (state.mode === MODE.TESTING) {
+    Audio.playCurrentNote();
+  } else if (state.mode === MODE.CALIBRATING) {
+    store.setState({
+      status: `Kalibratie (${ear}): ↑/↓ volume, spatie = bevestigen.`,
+    });
+  }
 }
 
 /* ---------------------------------------------------------
@@ -279,6 +295,10 @@ function renderUI(state) {
   const calClass = leftDone && rightDone ? "ready" : leftDone || rightDone ? "pending" : "error";
   const calText = leftDone && rightDone ? "Kalibratie ✓" : leftDone || rightDone ? "Kalibratie ⏳" : "Kalibratie ✗";
   setBtn(btnCalibrate, calText, calClass, mode !== MODE.IDLE || !state.canCalibrate);
+
+  /* ---- Ear toggle ---- */
+  btnLeftEar.classList.toggle("active", state.ear === "left");
+  btnRightEar.classList.toggle("active-right", state.ear === "right");
 
   /* ---- Test ---- */
   if (mode === MODE.IDLE) {
@@ -371,6 +391,8 @@ btnReset.onclick = () => {
   });
   stateMachine.transitionMode(MODE.IDLE, { status: "Reset." });
 };
+btnLeftEar.onclick = () => switchEar("left");
+btnRightEar.onclick = () => switchEar("right");
 btnDownload.onclick = () => Audio.downloadResults();
 btnUpload.onclick = () => fileInput.click();
 fileInput.onchange = () => {
@@ -430,15 +452,7 @@ window.addEventListener("keydown", (e) => {
 
   if (e.key === "e" || e.key === "E") {
     const ear = state.ear === "left" ? "right" : "left";
-    store.setState({ ear });
-    Audio.setPan(ear);
-    if (state.mode === MODE.TESTING) {
-      Audio.playCurrentNote();
-    } else if (state.mode === MODE.CALIBRATING) {
-      store.setState({
-        status: `Kalibratie (${ear}): ↑/↓ volume, spatie = bevestigen.`,
-      });
-    }
+    switchEar(ear);
     return;
   }
 
