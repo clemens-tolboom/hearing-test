@@ -59,28 +59,14 @@ button.error {
     gap: 1rem;
 }
 
-.col {
-    flex: 1;
-    min-width: 0;
-}
-
 .keys {
     list-style: none;
     padding: 0;
     margin: 0;
 }
-
 .keys li {
     margin-bottom: 0.4rem;
 }
-
-canvas {
-    background: #000;
-    border-radius: 4px;
-    width: 100%;
-    height: 300px;
-}
-
 .kbd {
     display: inline-block;
     padding: 0.1rem 0.3rem;
@@ -88,6 +74,13 @@ canvas {
     border: 1px solid #666;
     font-size: 0.8rem;
     background: #222;
+}
+
+canvas {
+    background: #000;
+    border-radius: 4px;
+    width: 100%;
+    height: 300px;
 }
 
 .ear-row {
@@ -150,4 +143,78 @@ select:disabled {
     white-space: pre-line;
     margin-top: 0.5rem;
     color: #ccc;
+}
+
+.mobile-controls {
+    margin-top: 0.5rem;
+}
+.ctrl-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.ctrl-btn {
+    flex: 0 1 auto;
+    padding: 0.8rem 0.6rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid #555;
+    background: #222;
+    color: #eee;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.ctrl-btn:active {
+    background: #444;
+}
+.ctrl-primary {
+    background: #1a5;
+    border-color: #2a5;
+    font-weight: bold;
+}
+.ctrl-primary:active {
+    background: #2a7;
+}
+
+@media (max-width: 640px) {
+    body {
+        padding: 0.5rem;
+    }
+    .row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .panel {
+        padding: 0.6rem;
+    }
+    h1 {
+        font-size: 1.2rem;
+    }
+    h2 {
+        font-size: 1rem;
+    }
+    canvas {
+        height: 220px;
+    }
+    button {
+        padding: 0.7rem 1rem;
+        font-size: 0.95rem;
+    }
+    .ear-btn {
+        padding: 0.8rem;
+        font-size: 1rem;
+    }
+    .keys {
+        font-size: 0.85rem;
+    }
+    input[type="number"] {
+        width: 60px;
+        padding: 0.6rem 1rem;
+        font-size: 0.95rem;
+    }
+    select {
+        padding: 0.6rem 1rem;
+        font-size: 0.95rem;
+    }
 }

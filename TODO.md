@@ -37,10 +37,10 @@
 - [x] feat: create for dist/ using `deno bundle` + `deno task copy2dist` (copy static assets + HTML)
 - [x] Calibration has own states (auto left→right ear advance). Pressing calibrate reuses last values.
 - [x] Graph scales with screen size (responsive) — canvas resizes on window resize + HiDPI support
+- [x] is site mobile-friendly? test and fix any issues
 
 ## Open
 
-- [ ] is site mobile-friendly? test and fix any issues
 - [ ] how to mobile mousewheel?
 - [ ] place ear icons on graph
 - [ ] is text in Stappen needed? maybe replace with icons + tooltips

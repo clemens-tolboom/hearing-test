@@ -6,7 +6,7 @@ import * as Audio from "./src/audio.js";
 /* ---------------------------------------------------------
    APP CONSTANTS
 --------------------------------------------------------- */
-const APP_VERSION = "0.1.1";
+const APP_VERSION = "0.2.0";
 const CALIBRATION_FREQ = 1000;
 
 const A_OCTAVES = [
@@ -118,6 +118,14 @@ const btnLeftEar = document.getElementById("btnLeftEar");
 const btnRightEar = document.getElementById("btnRightEar");
 const selLower = document.getElementById("freqLower");
 const selUpper = document.getElementById("freqUpper");
+const calControls = document.getElementById("calControls");
+const testControls = document.getElementById("testControls");
+const btnVolDown = document.getElementById("btnVolDown");
+const btnVolUp = document.getElementById("btnVolUp");
+const btnConfirm = document.getElementById("btnConfirm");
+const btnPrevNote = document.getElementById("btnPrevNote");
+const btnNextNote = document.getElementById("btnNextNote");
+const btnMarkThreshold = document.getElementById("btnMarkThreshold");
 
 let _cachedLower = DEFAULT_LOWER.freq;
 let _cachedUpper = DEFAULT_UPPER.freq;
@@ -300,6 +308,10 @@ function renderUI(state) {
   btnLeftEar.classList.toggle("active", state.ear === "left");
   btnRightEar.classList.toggle("active-right", state.ear === "right");
 
+  /* ---- Mobile controls ---- */
+  calControls.style.display = mode === MODE.CALIBRATING ? "flex" : "none";
+  testControls.style.display = mode === MODE.TESTING ? "flex" : "none";
+
   /* ---- Test ---- */
   if (mode === MODE.IDLE) {
     setBtn(btnTest, "Start test", state.canTest ? "ready" : "error", !state.canTest);
@@ -393,6 +405,32 @@ btnReset.onclick = () => {
 };
 btnLeftEar.onclick = () => switchEar("left");
 btnRightEar.onclick = () => switchEar("right");
+
+/* ---- Mobile controls ---- */
+btnVolDown.onclick = () => {
+  if (!Audio.isAudioRunning()) return;
+  Audio.setGain(store.getState().currentGain / 1.1);
+};
+btnVolUp.onclick = () => {
+  if (!Audio.isAudioRunning()) return;
+  Audio.setGain(store.getState().currentGain * 1.1);
+};
+btnConfirm.onclick = () => {
+  if (!Audio.isAudioRunning()) return;
+  if (store.getState().mode === MODE.CALIBRATING) Audio.finishCalibration();
+};
+btnPrevNote.onclick = () => {
+  if (!Audio.isAudioRunning()) return;
+  Audio.prevNote();
+};
+btnNextNote.onclick = () => {
+  if (!Audio.isAudioRunning()) return;
+  Audio.nextNote();
+};
+btnMarkThreshold.onclick = () => {
+  if (!Audio.isAudioRunning()) return;
+  if (store.getState().mode === MODE.TESTING) Audio.markThreshold();
+};
 btnDownload.onclick = () => Audio.downloadResults();
 btnUpload.onclick = () => fileInput.click();
 fileInput.onchange = () => {
@@ -442,6 +480,16 @@ canvas.addEventListener("wheel", (e) => {
   if (e.deltaY < 0) Audio.setGain(state.currentGain * 1.1);
   else Audio.setGain(state.currentGain / 1.1);
 });
+
+/* ---- Touch volume control ---- */
+canvas.addEventListener("touchstart", (e) => {
+  if (!Audio.isAudioRunning()) return;
+  const rect = canvas.getBoundingClientRect();
+  const y = (e.touches[0].clientY - rect.top) / rect.height;
+  const state = store.getState();
+  if (y < 0.5) Audio.setGain(state.currentGain * 1.1);
+  else Audio.setGain(state.currentGain / 1.1);
+}, { passive: true });
 
 /* ---------------------------------------------------------
    KEYBOARD
