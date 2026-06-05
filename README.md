@@ -2,7 +2,7 @@
 
 A browser-based single-page application for psychoacoustic hearing threshold measurements using piano-frequency sine tones, per-ear calibration, and an auto-switching test flow.
 
-![App screenshot](favicon.svg)
+![App screenshot](screenshot.png)
 
 ---
 
