@@ -1,0 +1,12 @@
+{
+  "tasks": {
+    "bundle": "deno bundle public/main.js > dist/main.js",
+    "copy2dist": "cd public/; cp *.css index.html favicon.svg ../dist/; cd ../",
+    "dist": "deno task bundle && deno task copy2dist",
+    "dev": "deno run --allow-net --allow-read jsr:@std/http/file-server public/",
+    "prd": "deno run --allow-net --allow-read jsr:@std/http/file-server dist/"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1"
+  }
+}
