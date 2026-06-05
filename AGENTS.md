@@ -12,7 +12,14 @@ Next to read/write/edit you can use
 
 - `deno check`
 
+The user runs other `deno task` to test new code.
+
 ## TODO
 
-- when fixed a todo mark is as such and move it into the done section
+- when fixed a todo from the `Open` section mark it done and move it into the `Done` section
 - when user say next todo make sure to reread the todo file
+
+## Code
+
+- code is in git versions control.
+- before changing code make sure `git status` is clean. If not stop working and ask user what to do with the uncommited changes.

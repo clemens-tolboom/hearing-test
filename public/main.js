@@ -63,10 +63,13 @@ const stateMachine = createStateMachine(store, {
       store.setState({ uploadStatus: UPLOAD.IDLE });
     },
     [MODE.CALIBRATING]: () => {
-      const ear = store.getState().ear;
-      Audio.startOsc(CALIBRATION_FREQ, 0.0001);
+      const state = store.getState();
+      const gain = state.calibrationGainLeft !== 0.001 ? state.calibrationGainLeft : 0.0001;
+      store.setState({ ear: "left", currentGain: gain });
+      Audio.startOsc(CALIBRATION_FREQ, gain);
+      Audio.setPan("left");
       store.setState({
-        status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.`,
+        status: "Kalibratie (links): ↑/↓ volume, spatie = bevestigen.",
       });
     },
     [MODE.TESTING]: () => Audio.startTest(),
@@ -413,7 +416,7 @@ window.addEventListener("keydown", (e) => {
       Audio.playCurrentNote();
     } else if (state.mode === MODE.CALIBRATING) {
       store.setState({
-        status: `Kalibratie (${ear}): ↑/↓ volume, E=wissel oor, spatie = bevestigen.`,
+        status: `Kalibratie (${ear}): ↑/↓ volume, spatie = bevestigen.`,
       });
     }
     return;

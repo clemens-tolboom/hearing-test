@@ -74,14 +74,6 @@ export function stopOsc() {
   }
 }
 
-export function setFreqFromX(x) {
-  const currentX = Math.min(1, Math.max(0, x));
-  const f = logFreqFromX(currentX);
-  if (osc) osc.frequency.value = f;
-  _store.setState({ currentX });
-  return f;
-}
-
 export function setGain(g) {
   const currentGain = Math.max(0.0000001, g);
   if (gainNode) gainNode.gain.value = currentGain;
@@ -126,17 +118,25 @@ export function prevNote() {
   }
 }
 
-export function startCalibration() {
-  _stateMachine.transitionMode(MODE.CALIBRATING);
-}
-
 export function finishCalibration() {
   const state = _store.getState();
   const key = state.ear === "left" ? "calibrationGainLeft" : "calibrationGainRight";
   _store.setState({ [key]: state.currentGain });
-  _stateMachine.transitionMode(MODE.IDLE, {
-    status: `${state.ear === "left" ? "Linker" : "Rechter"} oor gekalibreerd.`,
-  });
+  if (state.ear === "left") {
+    const rightGain = state.calibrationGainRight !== 0.001 ? state.calibrationGainRight : 0.0001;
+    setPan("right");
+    if (gainNode) gainNode.gain.value = rightGain;
+    _store.setState({
+      ear: "right",
+      currentGain: rightGain,
+      status: "Linker oor gekalibreerd. Nu rechter oor. ↑/↓ volume, spatie = bevestigen.",
+    });
+  } else {
+    stopOsc();
+    _stateMachine.transitionMode(MODE.IDLE, {
+      status: "Beide oren gekalibreerd.",
+    });
+  }
 }
 
 export function startTest() {
