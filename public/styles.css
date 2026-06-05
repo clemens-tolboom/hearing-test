@@ -59,23 +59,6 @@ button.error {
     gap: 1rem;
 }
 
-.keys {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.keys li {
-    margin-bottom: 0.4rem;
-}
-.kbd {
-    display: inline-block;
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    border: 1px solid #666;
-    font-size: 0.8rem;
-    background: #222;
-}
-
 canvas {
     background: #000;
     border-radius: 4px;
@@ -204,9 +187,6 @@ select:disabled {
     .ear-btn {
         padding: 0.8rem;
         font-size: 1rem;
-    }
-    .keys {
-        font-size: 0.85rem;
     }
     input[type="number"] {
         width: 60px;

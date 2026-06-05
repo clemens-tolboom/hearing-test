@@ -39,6 +39,7 @@
 - [x] Graph scales with screen size (responsive) — canvas resizes on window resize + HiDPI support
 - [x] is site mobile-friendly? test and fix any issues
 - [x] how to mobile mousewheel?
+- [x] is text in Stappen needed? maybe replace with icons + tooltips
 
 ## Open
 - [ ] place ear icons on graph

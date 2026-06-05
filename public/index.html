@@ -14,22 +14,15 @@
     <h1>Hoor Test – Piano Frequencies <span id="version"></span></h1>
 
     <div class="panel">
-        <ul class="keys">
-            <li><span class="kbd">muiswiel</span> volume</li>
-        </ul>
-    </div>
-
-    <div class="panel">
-        <h2>Knoppen</h2>
-        <button id="btnInit">Audio initialiseren</button>
+        <button id="btnInit" title="AudioContext starten">Audio initialiseren</button>
         <input type="number" id="inputVolume" value="50" min="0" max="100">
-        <button id="btnCalibrate" disabled>Kalibratie</button>
-        <button id="btnTest" disabled>Testfase</button>
-        <button id="btnSweep" disabled>Sweep</button>
-        <button id="btnDownload" disabled>Download resultaten</button>
+        <button id="btnCalibrate" disabled title="Per oor kalibreren op 1 kHz">Kalibratie</button>
+        <button id="btnTest" disabled title="Drempelwaarden meten per oor">Testfase</button>
+        <button id="btnSweep" disabled title="Continue sweep door alle drempels">Sweep</button>
+        <button id="btnDownload" disabled title="Resultaten exporteren als JSON">Download resultaten</button>
         <input type="file" id="fileInput" accept=".json" hidden>
-        <button id="btnUpload">Upload resultaten</button>
-        <button id="btnReset">Reset</button>
+        <button id="btnUpload" title="Eerder resultaat importeren">Upload resultaten</button>
+        <button id="btnReset" title="Alle data wissen en stoppen">Reset</button>
         <div class="row" style="margin-top:0.5rem">
             <label>Ondergrens <select id="freqLower"></select></label>
             <label style="margin-left:0.5rem">Bovengrens <select id="freqUpper"></select></label>
@@ -58,7 +51,7 @@
         <div id="info" class="status"></div>
     </div>
 
-    <script type="module" src="main.js?v=0.2.1"></script>
+    <script type="module" src="main.js?v=0.2.2"></script>
 
 </body>
 
