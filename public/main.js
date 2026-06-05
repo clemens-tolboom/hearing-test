@@ -6,7 +6,7 @@ import * as Audio from "./src/audio.js";
 /* ---------------------------------------------------------
    APP CONSTANTS
 --------------------------------------------------------- */
-const APP_VERSION = "0.2.4";
+const APP_VERSION = "0.2.5";
 const CALIBRATION_FREQ = 1000;
 
 const A_OCTAVES = [

@@ -45,6 +45,7 @@
 ## Open
 
 - [x] drop system volume as that confuses users and doesn't affect the test results anyway (apart from amplifier/headphone clipping)
-- [ ] remove text form ear buttons but keep the ear character.
+- [x] remove text form ear buttons but keep the ear character.
+- [ ] add version number into the exported JSON.
 - [ ] feat: when uploading is must be possible to multi layer test results ... add after tekst 'Grafiek' buttons with test result date ... clicking hide/show them ... maximal 3 layers
 - [ ] **BFS frequentie generator** — binaire zoekboom i.p.v. lineaire pianonoten. Elk interval splitst in midden, pijltjes navigeren door de boom (omhoog/omlaag = ouder/kind, links/rechts = sibling). Gebruiker hoort een freq en kiest "wel/niet hoorbaar" totdat de drempel op een bepaalde diepte is bepaald.
