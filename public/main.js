@@ -160,9 +160,18 @@ function drawChart(state) {
 
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
-  const chartTop = 10;
-  const chartBottom = h - 20;
+  const s = w / 800;
+  const chartTop = Math.max(8, Math.round(10 * s));
+  const chartBottom = h - Math.max(16, Math.round(20 * s));
   const chartHeight = chartBottom - chartTop;
+  const leftPad = Math.max(30, Math.round(40 * s));
+  const rightPad = Math.max(8, Math.round(10 * s));
+  const pf = w - leftPad - rightPad;
+  const axisFontSize = Math.max(13, Math.round(11 * s));
+  const freqFontSize = Math.max(13, Math.round(12 * s));
+  const tickH = Math.max(4, Math.round(5 * s));
+  const dotR = Math.max(3, Math.round(3 * s));
+  const curDotR = Math.max(4, Math.round(4 * s));
   const dBMin = -60;
 
   function computeDB(gain, calGain) {
@@ -186,43 +195,43 @@ function drawChart(state) {
 
   ctx2d.strokeStyle = "#333";
   ctx2d.fillStyle = "#777";
-  ctx2d.font = "11px system-ui";
+  ctx2d.font = axisFontSize + "px system-ui";
   for (let dB = dBMin; dB <= dBMax; dB += 20) {
     const y = chartBottom - ((dB - dBMin) / (dBMax - dBMin)) * chartHeight;
     ctx2d.beginPath();
-    ctx2d.moveTo(40, y);
-    ctx2d.lineTo(w - 10, y);
+    ctx2d.moveTo(leftPad, y);
+    ctx2d.lineTo(w - rightPad, y);
     ctx2d.stroke();
-    ctx2d.fillText(dB + " dB", 3, y + 4);
+    ctx2d.fillText(dB + " dB", 3, y + Math.round(axisFontSize * 0.35));
   }
 
   ctx2d.strokeStyle = "#444";
   ctx2d.beginPath();
-  ctx2d.moveTo(40, chartTop);
-  ctx2d.lineTo(40, chartBottom);
-  ctx2d.lineTo(w - 10, chartBottom);
+  ctx2d.moveTo(leftPad, chartTop);
+  ctx2d.lineTo(leftPad, chartBottom);
+  ctx2d.lineTo(w - rightPad, chartBottom);
   ctx2d.stroke();
 
   ctx2d.fillStyle = "#555";
-  ctx2d.font = "12px system-ui";
+  ctx2d.font = freqFontSize + "px system-ui";
   const firstOct = Math.ceil(Math.log2(state.freqLower / 125));
   const lastOct = Math.floor(Math.log2(state.freqUpper / 125));
   for (let n = firstOct; n <= lastOct; n++) {
     const f = 125 * Math.pow(2, n);
-    const x = 40 + xFromFreq(f) * (w - 60);
+    const x = leftPad + xFromFreq(f) * pf;
     const label = f >= 1000 ? (f / 1000).toFixed(0) + "k" : Math.round(f).toString();
-    ctx2d.fillRect(x, chartBottom, 1, 5);
-    ctx2d.fillText(label, x - 10, chartBottom + 14);
+    ctx2d.fillRect(x, chartBottom, 1, tickH);
+    ctx2d.fillText(label, x - Math.round(freqFontSize * 0.7), chartBottom + Math.round(freqFontSize * 1.1));
   }
 
   function drawList(list, color, calGain) {
     ctx2d.fillStyle = color;
     list.forEach((t) => {
-      const x = 40 + t.x * (w - 60);
+      const x = leftPad + t.x * pf;
       const dB = 20 * Math.log10(t.gain / calGain + 1e-10);
       const y = dBtoY(dB);
       ctx2d.beginPath();
-      ctx2d.arc(x, y, 3, 0, Math.PI * 2);
+      ctx2d.arc(x, y, dotR, 0, Math.PI * 2);
       ctx2d.fill();
     });
   }
@@ -230,12 +239,12 @@ function drawChart(state) {
   drawList(state.thresholdsLeft, "#2a5", state.calibrationGainLeft);
   drawList(state.thresholdsRight, "#fa3", state.calibrationGainRight);
 
-  const xCur = 40 + state.currentX * (w - 60);
+  const xCur = leftPad + state.currentX * pf;
   const dB = 20 * Math.log10(state.currentGain / (state.ear === "left" ? state.calibrationGainLeft : state.calibrationGainRight) + 1e-10);
   const yCur = dBtoY(dB);
   ctx2d.fillStyle = "#58a";
   ctx2d.beginPath();
-  ctx2d.arc(xCur, yCur, 4, 0, Math.PI * 2);
+  ctx2d.arc(xCur, yCur, curDotR, 0, Math.PI * 2);
   ctx2d.fill();
 }
 
